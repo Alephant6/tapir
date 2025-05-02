@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/homes/sys/naveenks/Research/Tapir"
-logdir="/biggerraid/users/naveenks/tapir"
+srcdir="/workspaces/tapir"
+logdir="/workspaces/tapir/logs"
 
 # Machines on which replicas are running.
 replicas=("breakout" "pitfall" "qbert")
@@ -59,7 +59,7 @@ echo "Mode: $mode"
 
 # Generate keys to be used in the experiment.
 echo "Generating random keys.."
-python key_generator.py $nkeys > keys
+python2 key_generator.py $nkeys > keys
 
 
 # Start all replicas and timestamp servers
@@ -115,4 +115,4 @@ echo "Processing logs"
 cat $logdir/client.*.log | sort -g -k 3 > $logdir/client.log
 rm -f $logdir/client.*.log
 
-python $srcdir/store/tools/process_logs.py $logdir/client.log $rtime
+python2 $srcdir/store/tools/process_logs.py $logdir/client.log $rtime
