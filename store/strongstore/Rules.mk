@@ -1,11 +1,11 @@
 d := $(dir $(lastword $(MAKEFILE_LIST)))
 
 SRCS += $(addprefix $(d), occstore.cc lockstore.cc server.cc \
-					client.cc shardclient.cc)
+					client.cc shardclient.cc tapirstylecc.cc )
 
 PROTOS += $(addprefix $(d), strong-proto.proto)
 
-LIB-strong-store := $(o)occstore.o $(o)lockstore.o
+LIB-strong-store := $(o)occstore.o $(o)lockstore.o $(o)tapirstylecc.o
 
 OBJS-strong-store := $(LIB-message) $(LIB-strong-store) $(LIB-store-common) \
 	$(LIB-store-backend) $(o)strong-proto.o $(o)server.o
