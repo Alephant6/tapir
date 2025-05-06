@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/workspaces/tapir"
-logdir="/workspaces/tapir/logs"
+srcdir="/home/vscode/tapir"
+logdir="/home/vscode/logs"
 
 # Machines on which replicas are running.
 replicas=("breakout" "pitfall" "qbert")
