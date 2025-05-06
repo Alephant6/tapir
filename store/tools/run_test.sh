@@ -26,13 +26,13 @@ replicas=("breakout" "pitfall" "qbert")
 clients=("spyhunter")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="txn-l"            # Mode for storage system.
+store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="occ"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nkeys=100000 # number of keys to use
-rtime=10     # duration to run
+rtime=1     # duration to run
 
 tlen=2       # transaction length
 wper=0       # writes percentage
