@@ -37,7 +37,6 @@
 #include "store/common/truetime.h"
 #include "store/strongstore/occstore.h"
 #include "store/strongstore/lockstore.h"
-#include "store/strongstore/tapirstylecc.h"
 #include "store/strongstore/strong-proto.pb.h"
 
 namespace strongstore {
@@ -47,8 +46,7 @@ enum Mode {
     MODE_OCC,
     MODE_LOCK,
     MODE_SPAN_OCC,
-    MODE_SPAN_LOCK,
-    MODE_TAPIR_Style_CC
+    MODE_SPAN_LOCK
 };
 
 class Server : public replication::AppReplica

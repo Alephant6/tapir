@@ -49,9 +49,6 @@ Server::Server(Mode mode, uint64_t skew, uint64_t error) : mode(mode)
     case MODE_SPAN_OCC:
         store = new strongstore::OCCStore();
         break;
-    case MODE_TAPIR_Style_CC:
-        store = new strongstore::TapirStyleCC();
-        break;
     default:
         NOT_REACHABLE();
     }
@@ -250,8 +247,6 @@ main(int argc, char **argv)
                 mode = strongstore::MODE_SPAN_LOCK;
             } else if (strcasecmp(optarg, "span-occ") == 0) {
                 mode = strongstore::MODE_SPAN_OCC;
-            } else if (strcasecmp(optarg, "span-occ") == 0) {
-                mode = strongstore::MODE_TAPIR_Style_CC;
             } else {
                 fprintf(stderr, "unknown mode '%s'\n", optarg);
             }
