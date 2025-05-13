@@ -38,6 +38,7 @@
 #include "replication/vr/client.h"
 #include "store/common/frontend/bufferclient.h"
 #include "store/common/frontend/client.h"
+#include "store/common/timestamp.h"
 #include "store/common/truetime.h"
 #include "store/strongstore/strong-proto.pb.h"
 #include "store/strongstore/shardclient.h"
@@ -70,7 +71,7 @@ private:
     void tssCallback(const string &request, const string &reply);
 
     // local Prepare function
-    int Prepare(uint64_t &ts);
+    int Prepare(Timestamp &timestamp);
 
     // Unique ID for this client.
     uint64_t client_id;
@@ -80,6 +81,9 @@ private:
 
     // Number of shards in SpanStore.
     long nshards;
+
+    // Number of retries for current transaction.
+    long retries;
 
     // List of participants in the ongoing transaction.
     std::set<int> participants;

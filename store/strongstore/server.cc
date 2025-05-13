@@ -70,6 +70,7 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
     Request request;
     Reply reply;
     int status;
+    Timestamp proposed;
     
     request.ParseFromString(str1);
 
@@ -97,7 +98,9 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
     case strongstore::proto::Request::PREPARE:
         // Prepare is the only case that is conditionally run at the leader
         status = store->Prepare(request.txnid(),
-                                Transaction(request.prepare().txn()));
+                                Transaction(request.prepare().txn()),
+                                Timestamp(request.prepare().timestamp()),
+                                proposed);
 
         // if prepared, then replicate result
         if (status == 0) {
@@ -142,6 +145,7 @@ Server::ReplicaUpcall(opnum_t opnum,
     Request request;
     Reply reply;
     int status = 0;
+    Timestamp proposed;
     
     request.ParseFromString(str1);
 
@@ -150,11 +154,10 @@ Server::ReplicaUpcall(opnum_t opnum,
         return;
     case strongstore::proto::Request::PREPARE:
         // get a prepare timestamp and return to client
-        store->Prepare(request.txnid(),
-                       Transaction(request.prepare().txn()));
-        if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
-            reply.set_timestamp(request.prepare().timestamp());
-        }
+        status = store->Prepare(request.txnid(),
+                                Transaction(request.prepare().txn()),
+                                Timestamp(request.prepare().timestamp()),
+                                proposed);
         break;
     case strongstore::proto::Request::COMMIT:
         store->Commit(request.txnid(), request.commit().timestamp());

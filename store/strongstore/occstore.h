@@ -38,8 +38,11 @@
 #include "store/common/backend/versionstore.h"
 #include "store/common/backend/txnstore.h"
 #include "store/common/transaction.h"
+#include "store/common/timestamp.h"
 
 #include <map>
+#include <set>
+#include <unordered_map>
 
 namespace strongstore {
 
@@ -52,16 +55,24 @@ public:
     // Overriding from TxnStore.
     int Get(uint64_t id, const std::string &key, std::pair<Timestamp, std::string> &value);
     int Get(uint64_t id, const std::string &key, const Timestamp &timestamp, std::pair<Timestamp, std::string> &value);
-    int Prepare(uint64_t id, const Transaction &txn);
+    int Prepare(uint64_t id, const Transaction &txn, const Timestamp &timestamp, Timestamp &proposed);
     void Commit(uint64_t id, uint64_t timestamp);
     void Abort(uint64_t id, const Transaction &txn = Transaction());
     void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
 
 private:
-    // Data store.
+     // Are we running in linearizable (vs serializable) mode?
+    bool linearizable=true;
+
+    // Data store
     VersionedKVStore store;
 
-    std::map<uint64_t, Transaction> prepared;
+    // TODO: comment this.
+    std::unordered_map<uint64_t, std::pair<Timestamp, Transaction>> prepared;
+    
+    void GetPreparedWrites(std::unordered_map< std::string, std::set<Timestamp> > &writes);
+    void GetPreparedReads(std::unordered_map< std::string, std::set<Timestamp> > &reads);
+    void Commit(const Timestamp &timestamp, const Transaction &txn);
 
     std::set<std::string> getPreparedWrites();
     std::set<std::string> getPreparedReadWrites();

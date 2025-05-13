@@ -155,55 +155,64 @@ Client::Put(const string &key, const string &value)
 }
 
 int
-Client::Prepare(uint64_t &ts)
+Client::Prepare(Timestamp &timestamp)
 {
-    int status;
-
     // 1. Send commit-prepare to all shards.
-    Debug("PREPARE Transaction");
+    uint64_t proposed = 0;
     list<Promise *> promises;
 
+    Debug("PREPARE [%lu] at %lu", t_id, timestamp.getTimestamp());
+    ASSERT(participants.size() > 0);
+
     for (auto p : participants) {
-        Debug("Sending prepare to shard [%d]", p);
         promises.push_back(new Promise(PREPARE_TIMEOUT));
-        bclient[p]->Prepare(Timestamp(),promises.back());
+        bclient[p]->Prepare(timestamp, promises.back());
     }
 
-    // In the meantime ... go get a timestamp for OCC
-    if (mode == MODE_OCC) {
-        // Have to go to timestamp server
-        unique_lock<mutex> lk(cv_m);
-
-        Debug("Sending request to TimeStampServer");
-	transport.Timer(0, [=]() { 
-		tss->Invoke("", bind(&Client::tssCallback, this,
-				     placeholders::_1,
-				     placeholders::_2));
-	    });
-        
-        Debug("Waiting for TSS reply");
-        cv.wait(lk);
-        ts = stol(replica_reply, NULL, 10);
-        Debug("TSS reply received: %lu", ts);
-    }
-
-    // 2. Wait for reply from all shards. (abort on timeout)
-    Debug("Waiting for PREPARE replies");
-
-    status = REPLY_OK;
+    int status = REPLY_OK;
+    uint64_t ts;
+    // 3. If all votes YES, send commit to all shards.
+    // If any abort, then abort. Collect any retry timestamps.
     for (auto p : promises) {
-        // If any shard returned false, abort the transaction.
-        if (p->GetReply() != REPLY_OK) {
-            if (status != REPLY_FAIL) {
-                status = p->GetReply();
-            }
-        }
-        // Also, find the max of all prepare timestamp returned.
-        if (p->GetTimestamp().getTimestamp() > ts) {
-            ts = p->GetTimestamp().getTimestamp();
+        uint64_t proposed = p->GetTimestamp().getTimestamp();
+
+        switch(p->GetReply()) {
+        case REPLY_OK:
+            Debug("PREPARE [%lu] OK", t_id);
+            continue;
+        case REPLY_FAIL:
+            // abort!
+            Debug("PREPARE [%lu] ABORT", t_id);
+            return REPLY_FAIL;
+        case REPLY_RETRY:
+            status = REPLY_RETRY;
+                if (proposed > ts) {
+                    ts = proposed;
+                }
+                break;
+        case REPLY_TIMEOUT:
+            status = REPLY_RETRY;
+            break;
+        case REPLY_ABSTAIN:
+            // just ignore abstains
+            break;
+        default:
+            break;
         }
         delete p;
     }
+
+    if (status == REPLY_RETRY) {
+        uint64_t now = timeServer.GetTime();
+        if (now > proposed) {
+            timestamp.setTimestamp(now);
+        } else {
+            timestamp.setTimestamp(proposed);
+        }
+        Debug("RETRY [%lu] at [%lu]", t_id, timestamp.getTimestamp());
+    }
+
+    Debug("All PREPARE's [%lu] received", t_id);
     return status;
 }
 
@@ -211,59 +220,24 @@ Client::Prepare(uint64_t &ts)
 bool
 Client::Commit()
 {
-    // Implementing 2 Phase Commit
-    uint64_t ts = 0;
+     // Implementing 2 Phase Commit
+    Timestamp timestamp(timeServer.GetTime(), client_id);
     int status;
 
-    for (int i = 0; i < COMMIT_RETRIES; i++) {
-        status = Prepare(ts);
-        if (status == REPLY_OK || status == REPLY_FAIL) {
+    for (retries = 0; retries < COMMIT_RETRIES; retries++) {
+        status = Prepare(timestamp);
+        if (status == REPLY_RETRY) {
+            continue;
+        } else {
             break;
         }
     }
 
     if (status == REPLY_OK) {
-        // For Spanner like systems, calculate timestamp.
-        if (mode == MODE_SPAN_OCC || mode == MODE_SPAN_LOCK) {
-            uint64_t now, err;
-            struct timeval t1, t2;
-
-            gettimeofday(&t1, NULL);
-            timeServer.GetTimeAndError(now, err);
-
-            if (now > ts) {
-                ts = now;
-            } else {
-                uint64_t diff = ((ts >> 32) - (now >> 32))*1000000 +
-                        ((ts & 0xffffffff) - (now & 0xffffffff));
-                err += diff;
-            }
-
-            commit_sleep = (int)err;
-
-            // how good are we at waking up on time?
-            Debug("Commit wait sleep: %lu", err);
-            if (err > 1000000)
-                Warning("Sleeping for too long! %lu; now,ts: %lu,%lu", err, now, ts);
-            if (err > 150) {
-                usleep(err-150);
-            }
-            // fine grained busy-wait
-            while (1) {
-                gettimeofday(&t2, NULL);
-                if ((t2.tv_sec-t1.tv_sec)*1000000 +
-                    (t2.tv_usec-t1.tv_usec) > (int64_t)err) {
-                    break;
-                }
-            }
-        }
-
-        // Send commits
-        Debug("COMMIT Transaction at [%lu]", ts);
-
+        Debug("COMMIT [%lu]", t_id);
+        
         for (auto p : participants) {
-            Debug("Sending commit to shard [%d]", p);
-            bclient[p]->Commit(ts);
+            bclient[p]->Commit(0);
         }
         return true;
     }
