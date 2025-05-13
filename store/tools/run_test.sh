@@ -20,14 +20,14 @@ srcdir="/home/vscode/tapir"
 logdir="/home/vscode/logs"
 
 # Machines on which replicas are running.
-replicas=("breakout" "pitfall" "qbert")
+replicas=("breakout")
 
 # Machines on which clients are running.
 clients=("spyhunter")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="occ"            # Mode for storage system.
+mode="span-occ"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
