@@ -15,3 +15,5 @@ OBJS-strong-client := $(OBJS-vr-client) $(LIB-udptransport) $(LIB-store-frontend
 $(d)server: $(LIB-udptransport) $(OBJS-vr-replica) $(OBJS-strong-store)
 
 BINS += $(d)server
+
+include $(d)tests/Rules.mk
