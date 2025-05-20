@@ -62,6 +62,7 @@ IRReplica::IRReplica(transport::Configuration config, int myIdx,
 }
 
 IRReplica::~IRReplica() {
+  // Shengzhou Add this to remove the persistent file after running experiments
    std::remove(persistent_view_info.Filename().c_str());
  }
 
