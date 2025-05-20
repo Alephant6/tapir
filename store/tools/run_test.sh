@@ -18,6 +18,7 @@ trap '{
 # Paths to source code and logfiles.
 srcdir="/home/vscode/tapir"
 logdir="/home/vscode/logs"
+db_file="results.db"  
 
 # Machines on which replicas are running.
 # replicas=("breakout")
@@ -27,24 +28,30 @@ replicas=("breakout" "pitfall" "qbert")
 clients=("spyhunter")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-# store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-# mode="span-occ"            # Mode for storage system.
-store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="txn-l"            # Mode for storage system.
+store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="span-occ"            # Mode for storage system.
+# store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
+# mode="txn-l"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nkeys=100000 # number of keys to use
 rtime=10     # duration to run
 
-tlen=2       # transaction length
-wper=0       # writes percentage
+tlen=1       # transaction length
+wper=50       # writes percentage
 err=0        # error
 skew=0       # skew
-zalpha=-1    # zipf alpha (-1 to disable zipf and enable uniform)
+zalpha=0.99    # zipf alpha (-1 to disable zipf and enable uniform)
+
+git_version=$(git -C "$srcdir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+nthread=1 
 
 # Print out configuration being used.
 echo "Configuration:"
+echo "Git Commit:         $git_version"
+echo "Replicas:           ${replicas[*]}  (total: ${#replicas[@]})"
+echo "Clients:            ${clients[*]}   (total: ${#clients[@]})"
 echo "Shards: $nshard"
 echo "Clients per host: $nclient"
 echo "Threads per client: $nthread"
@@ -118,4 +125,99 @@ echo "Processing logs"
 cat $logdir/client.*.log | sort -g -k 3 > $logdir/client.log
 rm -f $logdir/client.*.log
 
-python2 $srcdir/store/tools/process_logs.py $logdir/client.log $rtime
+python2 $srcdir/store/tools/process_logs.py $logdir/client.log $rtime \
+        > $logdir/client.report
+
+cat $logdir/client.report
+
+throughput=$(grep -i '^Throughput' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
+lat_p50=$(grep -i 'median.*latency' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+lat_p99=$(grep -i '99%tile.*latency' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+
+transactions_all=$(grep -i '^Transactions(All/Success):' "$logdir/client.report" | awk '{print $2}' | tr -d '[:space:]')
+transactions_success=$(grep -i '^Transactions(All/Success):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
+abort_rate=$(grep -i '^Abort Rate:' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
+avg_lat_all=$(grep -i '^Average Latency (all):' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+med_lat_all=$(grep -i '^Median  Latency (all):' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+p99_lat_all=$(grep -i '^99%tile Latency (all):' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+avg_lat_success=$(grep -i '^Average Latency (success):' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+med_lat_success=$(grep -i '^Median  Latency (success):' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+p99_lat_success=$(grep -i '^99%tile Latency (success):' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
+extra_all=$(grep -i '^Extra (all):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
+extra_success=$(grep -i '^Extra (success):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
+
+[ -z "$throughput" ]         && throughput=
+[ -z "$lat_p50" ]            && lat_p50=
+[ -z "$lat_p99" ]            && lat_p99=
+[ -z "$transactions_all" ]   && transactions_all=
+[ -z "$transactions_success" ] && transactions_success=
+[ -z "$abort_rate" ]         && abort_rate=
+[ -z "$avg_lat_all" ]        && avg_lat_all=
+[ -z "$med_lat_all" ]        && med_lat_all=
+[ -z "$p99_lat_all" ]        && p99_lat_all=
+[ -z "$avg_lat_success" ]    && avg_lat_success=
+[ -z "$med_lat_success" ]    && med_lat_success=
+[ -z "$p99_lat_success" ]    && p99_lat_success=
+[ -z "$extra_all" ]          && extra_all=
+[ -z "$extra_success" ]      && extra_success=
+
+sqlite3 "$db_file" <<'EOF'
+CREATE TABLE IF NOT EXISTS experiments (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    git_commit             TEXT,
+    replicas               TEXT,
+    clients                TEXT,
+    nshard                 INTEGER,
+    nclient                INTEGER,
+    nthread                INTEGER,
+    nkeys                  INTEGER,
+    tlen                   INTEGER,
+    wper                   INTEGER,
+    err                    INTEGER,
+    skew                   INTEGER,
+    zalpha                 REAL,
+    store                  TEXT,
+    mode                   TEXT,
+    throughput             REAL,
+    latency_p50            REAL,
+    latency_p99            REAL,
+    transactions_all       INTEGER,
+    transactions_success   INTEGER,
+    abort_rate             REAL,
+    avg_lat_all            REAL,
+    med_lat_all            REAL,
+    p99_lat_all            REAL,
+    avg_lat_success        REAL,
+    med_lat_success        REAL,
+    p99_lat_success        REAL,
+    extra_all              REAL,
+    extra_success          REAL
+);
+EOF
+
+sqlite3 "$db_file" <<EOF
+INSERT INTO experiments
+(git_commit, replicas, clients,
+ nshard, nclient, nthread, nkeys, tlen, wper, err, skew, zalpha,
+ store, mode,
+ throughput, latency_p50, latency_p99,
+ transactions_all, transactions_success, abort_rate,
+ avg_lat_all, med_lat_all, p99_lat_all,
+ avg_lat_success, med_lat_success, p99_lat_success,
+ extra_all, extra_success)
+VALUES (
+  '$git_version',
+  '$(IFS=,; echo "${replicas[*]}")',
+  '$(IFS=,; echo "${clients[*]}")',
+  $nshard, $nclient, $nthread, $nkeys, $tlen, $wper, $err, $skew, $zalpha,
+  '$store', '$mode',
+  ${throughput:-NULL}, ${lat_p50:-NULL}, ${lat_p99:-NULL},
+  ${transactions_all:-NULL}, ${transactions_success:-NULL}, ${abort_rate:-NULL},
+  ${avg_lat_all:-NULL}, ${med_lat_all:-NULL}, ${p99_lat_all:-NULL},
+  ${avg_lat_success:-NULL}, ${med_lat_success:-NULL}, ${p99_lat_success:-NULL},
+  ${extra_all:-NULL}, ${extra_success:-NULL}
+);
+EOF
+
+echo "Logged run to $db_file"
