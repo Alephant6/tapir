@@ -61,7 +61,9 @@ IRReplica::IRReplica(transport::Configuration config, int myIdx,
     view_change_timeout->Start();
 }
 
-IRReplica::~IRReplica() { }
+IRReplica::~IRReplica() {
+   std::remove(persistent_view_info.Filename().c_str());
+ }
 
 void
 IRReplica::ReceiveMessage(const TransportAddress &remote,
