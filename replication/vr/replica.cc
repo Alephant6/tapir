@@ -59,6 +59,7 @@ VRReplica::VRReplica(transport::Configuration config, int myIdx,
       startViewChangeQuorum(config.QuorumSize()-1),
       doViewChangeQuorum(config.QuorumSize()-1)
 {
+    RNotice("Entering VRReplica constructor: node %d, batchSize %u", myIdx, batchSize);
     this->status = STATUS_NORMAL;
     this->view = 0;
     this->lastOp = 0;
@@ -98,6 +99,7 @@ VRReplica::VRReplica(transport::Configuration config, int myIdx,
 
 VRReplica::~VRReplica()
 {
+    RNotice("Entering VRReplica destructor: node %d", myIdx);
     delete viewChangeTimeout;
     delete nullCommitTimeout;
     delete stateTransferTimeout;
@@ -112,6 +114,7 @@ VRReplica::~VRReplica()
 bool
 VRReplica::AmLeader() const
 {
+    RNotice("AmLeader called for node %d in view %d", myIdx, view);
     return (configuration.GetLeaderIndex(view) == myIdx);
 }
 
@@ -312,8 +315,11 @@ VRReplica::ResendPrepare()
 void
 VRReplica::CloseBatch()
 {
-    ASSERT(AmLeader());
-    ASSERT(lastBatchEnd < lastOp);
+  ASSERT(AmLeader());
+  ASSERT(lastBatchEnd < lastOp);
+  RNotice("CloseBatch called: batching from opnum %lu to %lu",
+          (long unsigned int)(lastBatchEnd + 1),
+          (long unsigned int)lastOp);
 
     opnum_t batchStart = lastBatchEnd+1;
     
