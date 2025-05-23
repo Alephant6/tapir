@@ -55,16 +55,16 @@ Client::Client(Mode mode, string configPath, int nShards,
     Debug("Initializing SpanStore client with id [%lu]", client_id);
 
     /* Start a client for time stamp server. */
-    if (mode == MODE_OCC) {
-        string tssConfigPath = configPath + ".tss.config";
-        ifstream tssConfigStream(tssConfigPath);
-        if (tssConfigStream.fail()) {
-            fprintf(stderr, "unable to read configuration file: %s\n",
-                    tssConfigPath.c_str());
-        }
-        transport::Configuration tssConfig(tssConfigStream);
-        tss = new replication::vr::VRClient(tssConfig, &transport);
-    }
+    // if (mode == MODE_OCC) {
+    //     string tssConfigPath = configPath + ".tss.config";
+    //     ifstream tssConfigStream(tssConfigPath);
+    //     if (tssConfigStream.fail()) {
+    //         fprintf(stderr, "unable to read configuration file: %s\n",
+    //                 tssConfigPath.c_str());
+    //     }
+    //     transport::Configuration tssConfig(tssConfigStream);
+    //     tss = new replication::vr::VRClient(tssConfig, &transport);
+    // }
 
     /* Start a client for each shard. */
     for (int i = 0; i < nShards; i++) {
