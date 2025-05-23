@@ -147,7 +147,7 @@ OCCStore::Prepare(uint64_t id, const Transaction &txn, const Timestamp &timestam
 
             // if the last committed write is bigger than the timestamp,
             // then can't accept in linearizable
-            if (val.first > timestamp ) {
+            if ( linearizable && val.first > timestamp ) {
                 Debug("[%lu] RETRY ww conflict w/ prepared key:%s", 
                       id, write.first.c_str());
                 proposedTimestamp = val.first;
@@ -178,7 +178,8 @@ OCCStore::Prepare(uint64_t id, const Transaction &txn, const Timestamp &timestam
 
         // if there is a pending write for this key, greater than the
         // proposed timestamp, retry
-        if (pWrites.find(write.first) != pWrites.end()) {
+        if ( linearizable &&
+             pWrites.find(write.first) != pWrites.end()) {
             set<Timestamp>::iterator it = pWrites[write.first].upper_bound(timestamp);
             if ( it != pWrites[write.first].end() ) {
                 Debug("[%lu] RETRY ww conflict w/ prepared key:%s",
