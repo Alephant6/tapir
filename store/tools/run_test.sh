@@ -39,7 +39,7 @@ nkeys=100000 # number of keys to use
 rtime=1     # duration to run
 
 tlen=1       # transaction length
-wper=50       # writes percentage
+wper=0       # writes percentage
 err=0        # error
 skew=0       # skew
 zalpha=-1    # zipf alpha (-1 to disable zipf and enable uniform)
@@ -81,7 +81,7 @@ for ((i=0; i<$nshard; i++))
 do
   echo "Starting shard$i replicas.."
   $srcdir/store/tools/start_replica.sh shard$i $srcdir/store/tools/shard$i.config \
-    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -s $skew" $logdir
+    "DEBUG=* $srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -s $skew" $logdir
 done
 
 
