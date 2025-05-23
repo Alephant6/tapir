@@ -39,6 +39,9 @@
 
 #include <algorithm>
 
+#include <chrono>
+#include <thread>
+
 #define RDebug(fmt, ...) Debug("[%d] " fmt, myIdx, ##__VA_ARGS__)
 #define RNotice(fmt, ...) Notice("[%d] " fmt, myIdx, ##__VA_ARGS__)
 #define RWarning(fmt, ...) Warning("[%d] " fmt, myIdx, ##__VA_ARGS__)
@@ -526,6 +529,7 @@ VRReplica::HandlePrepare(const TransportAddress &remote,
     RDebug("Received PREPARE <" FMT_VIEW "," FMT_OPNUM "-" FMT_OPNUM ">",
            msg.view(), msg.batchstart(), msg.opnum());
 
+    // std::this_thread::sleep_for(std::chrono::microseconds(100));
     if (this->status != STATUS_NORMAL) {
         RDebug("Ignoring PREPARE due to abnormal status");
         return;
@@ -574,6 +578,7 @@ VRReplica::HandlePrepare(const TransportAddress &remote,
     
     /* Add operations to the log */
     opnum_t op = msg.batchstart()-1;
+    
     for (auto &req : msg.request()) {
         op++;
         if (op <= lastOp) {
