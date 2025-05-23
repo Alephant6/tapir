@@ -29,7 +29,7 @@ clients=("spyhunter")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 # store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-# mode="span-occ"            # Mode for storage system.
+# mode="occ"            # Mode for storage system.
 store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
 mode="txn-l"            # Mode for storage system.
 
@@ -42,7 +42,7 @@ tlen=1       # transaction length
 wper=50       # writes percentage
 err=0        # error
 skew=0       # skew
-zalpha=0.99    # zipf alpha (-1 to disable zipf and enable uniform)
+zalpha=-1    # zipf alpha (-1 to disable zipf and enable uniform)
 
 git_version=$(git -C "$srcdir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 nthread=1 
