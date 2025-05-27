@@ -1,7 +1,7 @@
 d := $(dir $(lastword $(MAKEFILE_LIST)))
 
 SRCS += $(addprefix $(d), occstore.cc lockstore.cc server.cc \
-					client.cc shardclient.cc )
+					client.cc shardclient.cc)
 
 PROTOS += $(addprefix $(d), strong-proto.proto)
 

@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/vscode/tapir"
-logdir="/home/vscode/logs"
+srcdir="/homes/sys/naveenks/Research/Tapir"
+logdir="/biggerraid/users/naveenks/tapir"
 
 # Machines on which replicas are running.
 replicas=("breakout" "pitfall" "qbert")
@@ -26,13 +26,13 @@ replicas=("breakout" "pitfall" "qbert")
 clients=("spyhunter")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="occ"            # Mode for storage system.
+store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="txn-l"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nkeys=100000 # number of keys to use
-rtime=1     # duration to run
+rtime=10     # duration to run
 
 tlen=2       # transaction length
 wper=0       # writes percentage
@@ -59,7 +59,7 @@ echo "Mode: $mode"
 
 # Generate keys to be used in the experiment.
 echo "Generating random keys.."
-python2 key_generator.py $nkeys > keys
+python key_generator.py $nkeys > keys
 
 
 # Start all replicas and timestamp servers
@@ -115,4 +115,4 @@ echo "Processing logs"
 cat $logdir/client.*.log | sort -g -k 3 > $logdir/client.log
 rm -f $logdir/client.*.log
 
-python2 $srcdir/store/tools/process_logs.py $logdir/client.log $rtime
+python $srcdir/store/tools/process_logs.py $logdir/client.log $rtime
