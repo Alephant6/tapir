@@ -16,22 +16,23 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/vscode/tapir"
-logdir="/home/vscode/logs"
-db_file="results.db"  
+srcdir="/users/Alephant/tapir"
+logdir="/users/Alephant/logs"
+# PGURL for PostgreSQL database
+pg_url="postgresql://experiments_owner:npg_vqrPymEFW2u5@ep-lingering-glade-a87phiuy-pooler.eastus2.azure.neon.tech/experiments?sslmode=require"
 
 # Machines on which replicas are running.
 # replicas=("breakout")
-replicas=("breakout" "pitfall" "qbert")
+replicas=("node1" "node2" "node3")
 
 # Machines on which clients are running.
-clients=("spyhunter")
+clients=("node0")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="occ"            # Mode for storage system.
-# store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
-# mode="txn-l"            # Mode for storage system.
+# store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
+# mode="occ"            # Mode for storage system.
+store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="txn-l"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
@@ -131,8 +132,6 @@ python2 $srcdir/store/tools/process_logs.py $logdir/client.log $rtime \
 cat $logdir/client.report
 
 throughput=$(grep -i '^Throughput' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
-lat_p50=$(grep -i 'median.*latency' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
-lat_p99=$(grep -i '99%tile.*latency' "$logdir/client.report" | awk '{print $4}' | tr -d '[:space:]')
 
 transactions_all=$(grep -i '^Transactions(All/Success):' "$logdir/client.report" | awk '{print $2}' | tr -d '[:space:]')
 transactions_success=$(grep -i '^Transactions(All/Success):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
@@ -147,8 +146,6 @@ extra_all=$(grep -i '^Extra (all):' "$logdir/client.report" | awk '{print $3}' |
 extra_success=$(grep -i '^Extra (success):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
 
 [ -z "$throughput" ]         && throughput=
-[ -z "$lat_p50" ]            && lat_p50=
-[ -z "$lat_p99" ]            && lat_p99=
 [ -z "$transactions_all" ]   && transactions_all=
 [ -z "$transactions_success" ] && transactions_success=
 [ -z "$abort_rate" ]         && abort_rate=
@@ -161,47 +158,13 @@ extra_success=$(grep -i '^Extra (success):' "$logdir/client.report" | awk '{prin
 [ -z "$extra_all" ]          && extra_all=
 [ -z "$extra_success" ]      && extra_success=
 
-sqlite3 "$db_file" <<'EOF'
-CREATE TABLE IF NOT EXISTS experiments (
-    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts                     DATETIME DEFAULT CURRENT_TIMESTAMP,
-    git_commit             TEXT,
-    replicas               TEXT,
-    clients                TEXT,
-    nshard                 INTEGER,
-    nclient                INTEGER,
-    nthread                INTEGER,
-    nkeys                  INTEGER,
-    tlen                   INTEGER,
-    wper                   INTEGER,
-    err                    INTEGER,
-    skew                   INTEGER,
-    zalpha                 REAL,
-    store                  TEXT,
-    mode                   TEXT,
-    throughput             REAL,
-    latency_p50            REAL,
-    latency_p99            REAL,
-    transactions_all       INTEGER,
-    transactions_success   INTEGER,
-    abort_rate             REAL,
-    avg_lat_all            REAL,
-    med_lat_all            REAL,
-    p99_lat_all            REAL,
-    avg_lat_success        REAL,
-    med_lat_success        REAL,
-    p99_lat_success        REAL,
-    extra_all              REAL,
-    extra_success          REAL
-);
-EOF
 
-sqlite3 "$db_file" <<EOF
-INSERT INTO experiments
+psql "$pg_url" <<EOF
+INSERT INTO results
 (git_commit, replicas, clients,
  nshard, nclient, nthread, nkeys, tlen, wper, err, skew, zalpha,
  store, mode,
- throughput, latency_p50, latency_p99,
+ throughput,
  transactions_all, transactions_success, abort_rate,
  avg_lat_all, med_lat_all, p99_lat_all,
  avg_lat_success, med_lat_success, p99_lat_success,
@@ -212,7 +175,7 @@ VALUES (
   '$(IFS=,; echo "${clients[*]}")',
   $nshard, $nclient, $nthread, $nkeys, $tlen, $wper, $err, $skew, $zalpha,
   '$store', '$mode',
-  ${throughput:-NULL}, ${lat_p50:-NULL}, ${lat_p99:-NULL},
+  ${throughput:-NULL},
   ${transactions_all:-NULL}, ${transactions_success:-NULL}, ${abort_rate:-NULL},
   ${avg_lat_all:-NULL}, ${med_lat_all:-NULL}, ${p99_lat_all:-NULL},
   ${avg_lat_success:-NULL}, ${med_lat_success:-NULL}, ${p99_lat_success:-NULL},
@@ -220,4 +183,5 @@ VALUES (
 );
 EOF
 
-echo "Logged run to $db_file"
+echo "Logged run to PostgreSQL via $PGURL"
+# ...existing code...
