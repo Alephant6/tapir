@@ -26,7 +26,7 @@ pg_url="postgresql://experiments_owner:npg_vqrPymEFW2u5@ep-lingering-glade-a87ph
 replicas=("node1" "node2" "node3")
 
 # Machines on which clients are running.
-clients=("node0")
+clients=("node0" "node4")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 # store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
