@@ -145,6 +145,13 @@ p99_lat_success=$(grep -i '^99%tile Latency (success):' "$logdir/client.report" 
 extra_all=$(grep -i '^Extra (all):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
 extra_success=$(grep -i '^Extra (success):' "$logdir/client.report" | awk '{print $3}' | tr -d '[:space:]')
 
+git_branch=$(git rev-parse --abbrev-ref HEAD)
+if [ -f /.dockerenv ] || grep -qE '/docker/' /proc/1/cgroup; then
+    platform=docker
+else
+    platform=cloudlab 
+fi
+
 [ -z "$throughput" ]         && throughput=
 [ -z "$transactions_all" ]   && transactions_all=
 [ -z "$transactions_success" ] && transactions_success=
@@ -161,7 +168,7 @@ extra_success=$(grep -i '^Extra (success):' "$logdir/client.report" | awk '{prin
 
 psql "$pg_url" <<EOF
 INSERT INTO results
-(git_commit, replicas, clients,
+(git_commit, git_branch, platform, replicas, clients,
  nshard, nclient, nthread, nkeys, tlen, wper, err, skew, zalpha,
  store, mode,
  throughput,
@@ -171,6 +178,8 @@ INSERT INTO results
  extra_all, extra_success)
 VALUES (
   '$git_version',
+  '$git_branch', 
+  '$platform',
   '$(IFS=,; echo "${replicas[*]}")',
   '$(IFS=,; echo "${clients[*]}")',
   $nshard, $nclient, $nthread, $nkeys, $tlen, $wper, $err, $skew, $zalpha,
