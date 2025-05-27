@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/users/Alephant/tapir"
-logdir="/users/Alephant/logs"
+srcdir="/local/tapir"
+logdir="/local/tapir/logs"
 # PGURL for PostgreSQL database
 pg_url="postgresql://experiments_owner:npg_vqrPymEFW2u5@ep-lingering-glade-a87phiuy-pooler.eastus2.azure.neon.tech/experiments?sslmode=require"
 
