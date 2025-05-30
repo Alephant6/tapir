@@ -271,7 +271,7 @@ main(int argc, char **argv)
         }
 
         if (onlyGets) {
-          fprintf(stderr, "Batching %d gets\n", tLen);
+          // fprintf(stderr, "Batching %d gets\n", tLen);
           gettimeofday(&t3, NULL);
           client->BatchGets(readKeys, readValues);
           gettimeofday(&t4, NULL);
@@ -279,7 +279,7 @@ main(int argc, char **argv)
           getCount += tLen;
           getLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
         } else {
-          fprintf(stderr, "Doing %d gets and puts\n", tLen);
+          // fprintf(stderr, "Doing %d gets and puts\n", tLen);
           for (int j = 0; j < tLen; j++) {
             key = keys[rand_key()];
             

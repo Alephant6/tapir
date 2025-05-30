@@ -84,6 +84,97 @@ ShardClient::Begin(uint64_t id)
     }
 }
 
+void
+ShardClient::BatchGets(uint64_t id, const std::vector<std::string> &keys, Promise *promise) {
+    Debug("[shard %i] Sending BatchGets with %lu keys", shard, keys.size());
+
+    string request_str;
+    Request request;
+    request.set_op(Request::BATCH_GETS);
+    request.set_txnid(id);
+    
+    auto batch_get = request.mutable_batch_gets();
+    for (const auto &key : keys) {
+        batch_get->add_keys(key);
+    }
+    request.SerializeToString(&request_str);
+
+    // Set to 1 second by default
+    int timeout = (promise != NULL) ? promise->GetTimeout() : 1000;
+
+    transport->Timer(0, [=]() {
+        waiting = promise;    
+        client->InvokeUnlogged(replica,
+                              request_str,
+                              bind(&ShardClient::BatchGetsCallback,
+                                   this,
+                                   placeholders::_1,
+                                   placeholders::_2),
+                              bind(&ShardClient::GetTimeout,
+                                   this),
+                              timeout); // timeout in ms
+    });
+}
+
+void
+ShardClient::BatchGets(uint64_t id, const std::vector<std::string> &keys,
+                const Timestamp &timestamp, Promise *promise) {
+    Debug("[shard %i] Sending BatchGets with timestamp and %lu keys", shard, keys.size());
+
+    string request_str;
+    Request request;
+    request.set_op(Request::BATCH_GETS);
+    request.set_txnid(id);
+    
+    auto batch_get = request.mutable_batch_gets();
+    for (const auto &key : keys) {
+        batch_get->add_keys(key);
+    }
+    timestamp.serialize(batch_get->mutable_timestamp());
+    request.SerializeToString(&request_str);
+
+    int timeout = (promise != NULL) ? promise->GetTimeout() : 1000;
+
+    transport->Timer(0, [=]() {
+        waiting = promise;
+        client->InvokeUnlogged(replica,
+                              request_str,
+                              bind(&ShardClient::BatchGetsCallback,
+                                   this,
+                                   placeholders::_1,
+                                   placeholders::_2),
+                              bind(&ShardClient::GetTimeout,
+                                   this),
+                              timeout); 
+    });
+}
+
+void 
+ShardClient::BatchGetsCallback(const std::string &request_str, const std::string &reply_str) {
+    Reply reply;
+    reply.ParseFromString(reply_str);
+
+    Debug("[shard %i] Received BATCH_GET callback [%d]", shard, reply.status());
+    if (waiting != NULL) {
+        Promise *w = waiting;
+        waiting = NULL;
+        
+        std::vector<std::string> values;
+        if (reply.has_batch_values()) {
+            const auto &batch_values = reply.batch_values();
+            for (int i = 0; i < batch_values.values_size(); i++) {
+                values.push_back(batch_values.values(i));
+            }
+        }
+        
+        if (reply.has_timestamp()) {
+            w->Reply(reply.status(), Timestamp(reply.timestamp()), values);
+        } else {
+            w->Reply(reply.status(), values);
+        }
+    }
+}
+
 /* Returns the value corresponding to the supplied key. */
 void
 ShardClient::Get(uint64_t id, const string &key, Promise *promise)

@@ -78,6 +78,53 @@ BufferClient::Get(const string &key, Promise *promise)
     }
 }
 
+void
+BufferClient::BatchGets(const std::vector<std::string> &keys, Promise *promise)
+{
+    std::vector<std::string> results(keys.size());
+    std::vector<std::string> serverKeys;
+    std::vector<size_t> serverIdxs;
+
+    for (size_t i = 0; i < keys.size(); i++) {
+        const auto &k = keys[i];
+        auto wIt = txn.getWriteSet().find(k);
+        if (wIt != txn.getWriteSet().end()) {
+            results[i] = wIt->second;
+            continue;
+        }
+        auto rIt = txn.getReadSet().find(k);
+        if (rIt != txn.getReadSet().end()) {
+            Promise tempPromise(GET_TIMEOUT);
+            Promise *pp = (promise != nullptr) ? promise : &tempPromise;
+            txnclient->Get(tid, k, rIt->second, pp);
+            if (pp->GetReply() == REPLY_OK) {
+                results[i] = pp->GetValue();
+            }
+        } else {
+            serverKeys.push_back(k);
+            serverIdxs.push_back(i);
+        }
+    }
+
+    if (!serverKeys.empty()) {
+        Promise tempPromise(GET_TIMEOUT);
+        Promise *pp = (promise != nullptr) ? promise : &tempPromise;
+
+        txnclient->BatchGets(tid, serverKeys, pp);
+        if (pp->GetReply() == REPLY_OK) {
+            auto vs = pp->GetValues();
+            for (size_t i = 0; i < vs.size(); i++) {
+                results[serverIdxs[i]] = vs[i];
+
+            }
+        }
+    }
+
+    if (promise) {
+        promise->Reply(REPLY_OK, results);
+    }
+}
+
 /* Set value for a key. (Always succeeds).
  * Returns 0 on success, else -1. */
 void

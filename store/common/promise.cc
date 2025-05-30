@@ -96,6 +96,23 @@ Promise::Reply(int r, Timestamp t, string v)
     ReplyInternal(r);
 }
 
+void
+Promise::Reply(int r, std::vector<std::string> vs)
+{
+    lock_guard<mutex> l(lock);
+    values = std::move(vs);
+    ReplyInternal(r);
+}
+
+void
+Promise::Reply(int r, Timestamp t, std::vector<std::string> vs)
+{
+    lock_guard<mutex> l(lock);
+    values = std::move(vs);
+    timestamp = t;
+    ReplyInternal(r);
+}
+
 // Functions for getting a reply from the promise
 int
 Promise::GetReply()
@@ -125,4 +142,14 @@ Promise::GetValue()
         cv.wait(l);
     }
     return value;
+}
+
+std::vector<std::string> 
+Promise::GetValues()
+{
+    std::unique_lock<std::mutex> l(lock);
+    while (!done) {
+        cv.wait(l);
+    }
+    return values; 
 }

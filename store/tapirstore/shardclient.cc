@@ -143,6 +143,24 @@ ShardClient::Get(uint64_t id, const string &key,
     });
 }
 
+void 
+ShardClient::BatchGets(uint64_t id,
+        const std::vector<std::string> &keys,
+        Promise *promise){
+          // dummy
+          Panic("Unimplemented PUT");
+          return;
+        }
+void 
+ShardClient::BatchGets(uint64_t id,
+        const std::vector<std::string> &keys,
+        const Timestamp &timestamp, 
+        Promise *promiseL) {
+          // dummy
+          Panic("Unimplemented PUT");
+          return;
+        }
+
 void
 ShardClient::Put(uint64_t id,
                const string &key,

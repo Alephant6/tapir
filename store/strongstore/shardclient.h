@@ -73,6 +73,13 @@ public:
             const std::string &key,
             const Timestamp &timestamp, 
             Promise *promise = NULL);
+    void BatchGets(uint64_t id,
+            const std::vector<std::string> &keys,
+            Promise *promise = NULL);
+    void BatchGets(uint64_t id,
+            const std::vector<std::string> &keys,
+            const Timestamp &timestamp, 
+            Promise *promise = NULL);
     void Put(uint64_t id,
 	     const std::string &key,
 	     const std::string &value,
@@ -104,6 +111,7 @@ private:
 
     /* Callbacks for hearing back from a shard for an operation. */
     void GetCallback(const std::string &, const std::string &);
+    void BatchGetsCallback(const std::string &, const std::string &);
     void PrepareCallback(const std::string &, const std::string &);
     void CommitCallback(const std::string &, const std::string &);
     void AbortCallback(const std::string &, const std::string &);

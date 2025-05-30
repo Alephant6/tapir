@@ -74,6 +74,15 @@ public:
                      const Timestamp &timestamp,
                      Promise *promise = NULL) = 0;
 
+    virtual void BatchGets(uint64_t id,
+                     const std::vector<std::string> &key,
+                     Promise *promise = NULL) = 0;
+
+    virtual void BatchGets(uint64_t id,
+                     const std::vector<std::string> &key,
+                     const Timestamp &timestamp,
+                     Promise *promise = NULL) = 0;
+
     // Set the value for the given key.
     virtual void Put(uint64_t id,
                      const std::string &key,

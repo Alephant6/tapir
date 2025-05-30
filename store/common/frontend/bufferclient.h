@@ -49,6 +49,8 @@ public:
     // Get value corresponding to key.
     void Get(const string &key, Promise *promise = NULL);
 
+    void BatchGets(const std::vector<std::string> &keys, Promise *promise);
+
     // Put value for given key.
     void Put(const string &key, const string &value, Promise *promise = NULL);
 

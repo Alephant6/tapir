@@ -172,30 +172,69 @@ Server::ReplicaUpcall(opnum_t opnum,
 void
 Server::UnloggedUpcall(const string &str1, string &str2)
 {
+    // add BATCH_GETS
     Request request;
     Reply reply;
     int status;
     
     request.ParseFromString(str1);
 
-    ASSERT(request.op() == strongstore::proto::Request::GET);
+    ASSERT(request.op() == strongstore::proto::Request::GET ||
+           request.op() == strongstore::proto::Request::BATCH_GETS);
 
-    if (request.get().has_timestamp()) {
+    switch (request.op()) {
+    case strongstore::proto::Request::GET: {
+      if (request.get().has_timestamp()) {
         pair<Timestamp, string> val;
         status = store->Get(request.txnid(), request.get().key(),
-                            request.get().timestamp(), val);
+        request.get().timestamp(), val);
         if (status == 0) {
-            reply.set_value(val.second);
+          reply.set_value(val.second);
         }
-    } else {
+      } else {
         pair<Timestamp, string> val;
         status = store->Get(request.txnid(), request.get().key(), val);
         if (status == 0) {
-            reply.set_value(val.second);
-            reply.set_timestamp(val.first.getTimestamp());
+          reply.set_value(val.second);
+          reply.set_timestamp(val.first.getTimestamp());
         }
+      }
+      break;              
     }
-    
+    case strongstore::proto::Request::BATCH_GETS: {
+      const auto &bg  = request.batch_gets();                  
+      auto *bvals      = reply.mutable_batch_values();        
+      status           = 0;                                   
+      Timestamp maxTS;                                       
+      for (int i = 0; i < bg.keys_size(); ++i) {
+          const std::string &key = bg.keys(i);
+          std::pair<Timestamp, std::string> val;
+          int rc;
+
+          if (bg.has_timestamp()) {
+              rc = store->Get(request.txnid(), key, bg.timestamp(), val);
+          } else {
+              rc = store->Get(request.txnid(), key, val);
+          }
+
+          if (rc != 0) {               
+              status = rc;
+              break;
+          }
+
+          bvals->add_values(val.second);
+
+          if (!bg.has_timestamp() && val.first > maxTS) {
+              maxTS = val.first;
+          }
+      }
+
+      if (!bg.has_timestamp() && status == 0 && bvals->values_size() > 0) {
+          reply.set_timestamp(maxTS.getTimestamp());
+      }
+      break;
+    }
+  }
     reply.set_status(status);
     reply.SerializeToString(&str2);
 }

@@ -48,6 +48,7 @@ private:
     int reply;
     Timestamp timestamp;
     std::string value;
+    std::vector<std::string> values;
     std::mutex lock;
     std::condition_variable cv;
 
@@ -63,6 +64,8 @@ public:
     void Reply(int r, Timestamp t);
     void Reply(int r, std::string v);
     void Reply(int r, Timestamp t, std::string v);
+    void Reply(int r, std::vector<std::string> vs);
+    void Reply(int r, Timestamp t, std::vector<std::string> vs);
 
     // Return configured timeout
     int GetTimeout();
@@ -71,6 +74,7 @@ public:
     int GetReply();
     Timestamp GetTimestamp();
     std::string GetValue();
+    std::vector<std::string> GetValues();
 };
 
 #endif /* _PROMISE_H_ */
