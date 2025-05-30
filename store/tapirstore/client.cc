@@ -123,19 +123,8 @@ Client::Get(const string &key, string &value)
 
 int
 Client::BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues) {
-  for (const auto &key : readKeys) {
-    string value;
-    int status = Get(key, value);
-    if (status == REPLY_OK) {
-      readValues.push_back(value);
-    }
-  }
-
-  if (readValues.size() == readKeys.size()) {
-    return REPLY_OK;
-  } else {
-    return -1;
-  }
+  // dummy 
+  return 0;
 }
 
 string
