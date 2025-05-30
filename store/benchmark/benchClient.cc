@@ -242,6 +242,12 @@ main(int argc, char **argv)
     int commitCount = 0;
     double commitLatency = 0.0;
 
+    std::vector<std::string> readKeys;
+    std::vector<std::string> readValues;
+    readKeys.reserve(tLen);
+    readValues.reserve(tLen);
+    bool onlyGets = true;
+
     gettimeofday(&t0, NULL);
     srand(t0.tv_sec + t0.tv_usec);
 
@@ -253,26 +259,48 @@ main(int argc, char **argv)
         beginCount++;
         beginLatency += ((t1.tv_sec - t4.tv_sec)*1000000 + (t1.tv_usec - t4.tv_usec));
         
+        onlyGets = true;
+        readKeys.clear();
         for (int j = 0; j < tLen; j++) {
-            key = keys[rand_key()];
-
-            if (rand() % 100 < wPer) {
-                gettimeofday(&t3, NULL);
-                client->Put(key, key);
-                gettimeofday(&t4, NULL);
-                
-                putCount++;
-                putLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
-            } else {
-                gettimeofday(&t3, NULL);
-                client->Get(key, value);
-                gettimeofday(&t4, NULL);
-
-                getCount++;
-                getLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
-            }
+          if (rand() % 100 < wPer) {
+            onlyGets = false;
+            break;
+          } else {
+              readKeys.push_back(keys[rand_key()]);
+          }
         }
 
+        if (onlyGets) {
+          fprintf(stderr, "Batching %d gets\n", tLen);
+          gettimeofday(&t3, NULL);
+          client->BatchGets(readKeys, readValues);
+          gettimeofday(&t4, NULL);
+          
+          getCount += tLen;
+          getLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
+        } else {
+          fprintf(stderr, "Doing %d gets and puts\n", tLen);
+          for (int j = 0; j < tLen; j++) {
+            key = keys[rand_key()];
+            
+            if (rand() % 100 < wPer) {
+              gettimeofday(&t3, NULL);
+              client->Put(key, key);
+              gettimeofday(&t4, NULL);
+              
+              putCount++;
+              putLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
+            } else {
+              gettimeofday(&t3, NULL);
+              client->Get(key, value);
+              gettimeofday(&t4, NULL);
+              
+              getCount++;
+              getLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
+            }
+          }
+        }
+          
         gettimeofday(&t3, NULL);
         bool status = client->Commit();
         gettimeofday(&t2, NULL);

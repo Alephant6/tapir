@@ -58,6 +58,7 @@ public:
     // Overriding functions from ::Client
     void Begin();
     int Get(const string &key, string &value);
+    int BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues);
     int Put(const string &key, const string &value);
     bool Commit();
     void Abort();

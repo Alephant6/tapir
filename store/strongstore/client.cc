@@ -135,6 +135,12 @@ Client::Get(const string &key, string &value)
     return promise.GetReply();
 }
 
+int
+Client::BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues) {
+  // dummy
+  return 0;
+}
+
 /* Sets the value corresponding to the supplied key. */
 int
 Client::Put(const string &key, const string &value)

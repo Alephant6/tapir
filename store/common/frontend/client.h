@@ -27,6 +27,8 @@ public:
     // Get the value corresponding to key.
     virtual int Get(const std::string &key, std::string &value) = 0;
 
+    virtual int BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues) = 0;
+
     // Set the value for the given key.
     virtual int Put(const std::string &key, const std::string &value) = 0;
 
