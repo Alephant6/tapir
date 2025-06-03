@@ -26,20 +26,21 @@ pg_url="postgresql://experiments_owner:npg_vqrPymEFW2u5@ep-lingering-glade-a87ph
 replicas=("node1" "node2" "node3")
 
 # Machines on which clients are running.
-clients=("node0" "node4")
+clients=("node0")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-# store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-# mode="occ"            # Mode for storage system.
-store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="txn-l"            # Mode for storage system.
+store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="occ"            # Mode for storage system.
+# store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
+# mode="txn-l"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nkeys=100000 # number of keys to use
 rtime=1     # duration to run
 
-tlen=1       # transaction length
+general_txn=0 # flag for generating general transactions (0: false, 1: true)
+tlen=10       # transaction length
 wper=0       # writes percentage
 err=0        # error
 skew=0       # skew
@@ -62,6 +63,7 @@ echo "Write Percentage: $wper"
 echo "Error: $err"
 echo "Skew: $skew"
 echo "Zipf alpha: $zalpha"
+echo "General Transactions: $general_txn"
 echo "Skew: $skew"
 echo "Client: $client"
 echo "Store: $store"
@@ -97,7 +99,7 @@ for host in ${clients[@]}
 do
   ssh $host "$srcdir/store/tools/start_client.sh \"$srcdir/store/benchmark/$client \
   -c $srcdir/store/tools/shard -N $nshard -f $srcdir/store/tools/keys \
-  -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -s $skew -z $zalpha\" \
+  -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -s $skew -z $zalpha -g $general_txn\" \
   $count $nclient $logdir"
 
   let count=$count+$nclient
@@ -170,7 +172,7 @@ psql "$pg_url" <<EOF
 INSERT INTO results
 (git_commit, git_branch, platform, replicas, clients,
  nshard, nclient, nthread, nkeys, tlen, wper, err, skew, zalpha,
- store, mode,
+ store, mode, general_txn,
  throughput,
  transactions_all, transactions_success, abort_rate,
  avg_lat_all, med_lat_all, p99_lat_all,
@@ -183,7 +185,7 @@ VALUES (
   '$(IFS=,; echo "${replicas[*]}")',
   '$(IFS=,; echo "${clients[*]}")',
   $nshard, $nclient, $nthread, $nkeys, $tlen, $wper, $err, $skew, $zalpha,
-  '$store', '$mode',
+  '$store', '$mode',  $general_txn,
   ${throughput:-NULL},
   ${transactions_all:-NULL}, ${transactions_success:-NULL}, ${abort_rate:-NULL},
   ${avg_lat_all:-NULL}, ${med_lat_all:-NULL}, ${p99_lat_all:-NULL},

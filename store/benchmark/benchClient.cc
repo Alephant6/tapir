@@ -23,6 +23,7 @@ double *zipf;
 
 vector<string> keys;
 int nKeys = 100;
+bool generateGeneralTransactions = true;
 
 int
 main(int argc, char **argv)
@@ -49,7 +50,7 @@ main(int argc, char **argv)
     strongstore::Mode strongmode;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:d:N:l:w:k:f:m:e:s:z:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:d:N:l:w:k:f:m:e:s:z:r:g:")) != -1) {
         switch (opt) {
         case 'c': // Configuration path
         { 
@@ -192,6 +193,24 @@ main(int argc, char **argv)
             }
             break;
         }
+        case 'g':
+        {    
+          // add one flag to specify the transaction type, it is a bool value
+          // If it is true, then it will generate general transactions: 
+          // read-write transactions according to the percentage of writes
+          // if it is false, then it will generate read-only and write-only 
+          // transactions according to the percentage of writes
+          char *strtolPtr;
+          int generalTxn = strtol(optarg, &strtolPtr, 10);
+          if ((*optarg == '\0') || (*strtolPtr != '\0') || (generalTxn != 0 && generalTxn != 1)) {
+              fprintf(stderr, "option -g requires a boolean value (0 or 1)\n");
+              exit(0);
+          }
+          // Store the value in a boolean variable
+          generateGeneralTransactions = (generalTxn == 1);
+          break;
+
+        }
 
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
@@ -246,7 +265,6 @@ main(int argc, char **argv)
     std::vector<std::string> readValues;
     readKeys.reserve(tLen);
     readValues.reserve(tLen);
-    bool onlyGets = true;
 
     gettimeofday(&t0, NULL);
     srand(t0.tv_sec + t0.tv_usec);
@@ -258,28 +276,35 @@ main(int argc, char **argv)
         
         beginCount++;
         beginLatency += ((t1.tv_sec - t4.tv_sec)*1000000 + (t1.tv_usec - t4.tv_usec));
-        
-        onlyGets = true;
-        readKeys.clear();
-        for (int j = 0; j < tLen; j++) {
-          if (rand() % 100 < wPer) {
-            onlyGets = false;
-            break;
-          } else {
-              readKeys.push_back(keys[rand_key()]);
-          }
-        }
 
-        if (onlyGets) {
-          // fprintf(stderr, "Batching %d gets\n", tLen);
-          gettimeofday(&t3, NULL);
-          client->BatchGets(readKeys, readValues);
-          gettimeofday(&t4, NULL);
-          
-          getCount += tLen;
-          getLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
+         if (!generateGeneralTransactions && mode == MODE_STRONG && strongmode == strongstore::MODE_OCC) { 
+          // It only supports  strongstore's occ mode
+          //  Generate read-only and write-only transactions
+          //  according to the percentage of writes.
+          if (rand() % 100 < wPer) {
+            for (int j = 0; j < tLen; j++) {
+              key = keys[rand_key()];
+              gettimeofday(&t3, NULL);
+              client->Put(key, key);
+              gettimeofday(&t4, NULL);
+              
+              putCount++;
+              putLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
+            }
+          } else {
+            readKeys.clear();
+            for (int j = 0; j < tLen; j++) {
+              readKeys.push_back(keys[rand_key()]);
+            }
+            gettimeofday(&t3, NULL);
+            client->BatchGets(readKeys, readValues);
+            gettimeofday(&t4, NULL);
+            
+            getCount += tLen;
+            getLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
+          }
         } else {
-          // fprintf(stderr, "Doing %d gets and puts\n", tLen);
+          // Generate read-write transactions according to the percentage of writes.
           for (int j = 0; j < tLen; j++) {
             key = keys[rand_key()];
             
@@ -300,6 +325,7 @@ main(int argc, char **argv)
             }
           }
         }
+        
           
         gettimeofday(&t3, NULL);
         bool status = client->Commit();
