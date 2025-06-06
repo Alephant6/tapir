@@ -136,14 +136,14 @@ _Message_VA(enum Message_Type type, FILE *fp,
     fprintf(fp, "%s ", descs[nDesc].prefix);
 
     if (fname) {
-        const char *fbasename = strrchr(fname, '/');
-        if (fbasename)
-            ++fbasename;
-        else
-            fbasename = fname;
-        char filepos[32];
+        // const char *fbasename = strrchr(fname, '/');
+        // if (fbasename)
+        //     ++fbasename;
+        // else
+        //     fbasename = fname;
+        char filepos[64];
         snprintf(filepos, sizeof(filepos)/sizeof(filepos[0]),
-                 "(%s:%d):", fbasename, line);
+                 "(%s:%d):", fname, line);
         fprintf(fp, "%-15s %-19s ",
                 func, filepos);
     }
