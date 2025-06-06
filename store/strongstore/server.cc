@@ -99,9 +99,16 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
                                 Timestamp(request.prepare().timestamp()),
                                 proposed);
 
-        // if prepared, then replicate result
-        if (status == 0) {
-            replicate = true;
+        // if the transaction is read-only, then replicate=false, and reply.set_status(status);
+        if (Transaction(request.prepare().txn()).IsReadOnly()) {
+          Debug("Received Read-Only Prepare: %lu", request.txnid());
+          replicate = false;
+          reply.set_status(status);
+          request.SerializeToString(&str2);
+          //TODO: BlockCondition
+        } else if (status == 0) {
+          // if prepared, then replicate result
+            replicate = true;          
             // get a prepare timestamp and send along to replicas
             if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
                 request.mutable_prepare()->set_timestamp(timeServer.GetTime());

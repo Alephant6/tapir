@@ -471,6 +471,9 @@ VRReplica::HandleRequest(const TransportAddress &remote,
         cte.replied = true;
         cte.reply = reply;
         transport->SendMessage(this, remote, reply);
+        // Shengzhou: reset these timeouts for read-only's non replicated requests
+        nullCommitTimeout->Reset();
+        viewChangeTimeout->Reset();
     } else {
         Request request;
         request.set_op(res);

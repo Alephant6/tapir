@@ -40,6 +40,10 @@ public:
     Transaction(const TransactionMessage &msg);
     ~Transaction();
 
+    bool IsReadOnly() const {
+        return writeSet.empty();
+    }
+
     const std::unordered_map<std::string, Timestamp>& getReadSet() const;
     const std::unordered_map<std::string, std::string>& getWriteSet() const;
     
