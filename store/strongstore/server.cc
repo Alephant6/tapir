@@ -176,11 +176,12 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     Request request;
     Reply reply;
     int status;
+    Timestamp proposed;
     
     request.ParseFromString(str1);
 
-    ASSERT(request.op() == strongstore::proto::Request::GET ||
-           request.op() == strongstore::proto::Request::BATCH_GETS);
+    // ASSERT(request.op() == strongstore::proto::Request::GET ||
+          //  request.op() == strongstore::proto::Request::BATCH_GETS);
 
     switch (request.op()) {
     case strongstore::proto::Request::GET: {
@@ -234,6 +235,32 @@ Server::UnloggedUpcall(const string &str1, string &str2)
       }
       break;
     }
+    case strongstore::proto::Request::PREPARE:
+        // Prepare is the only case that is conditionally run at the leader
+        status = store->Prepare(request.txnid(),
+                                Transaction(request.prepare().txn()),
+                                Timestamp(request.prepare().timestamp()),
+                                proposed);
+
+        // if prepared, then replicate result
+        if (status == 0) {
+            // get a prepare timestamp and send along to replicas
+            if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
+                request.mutable_prepare()->set_timestamp(timeServer.GetTime());
+            }
+            request.SerializeToString(&str2);
+        } else {
+            // if abort, don't replicate
+            reply.set_status(status);
+            reply.SerializeToString(&str2);
+        }
+        break;
+    case strongstore::proto::Request::COMMIT:
+        str2 = str1;
+        break;
+    case strongstore::proto::Request::ABORT:
+        store->Abort(request.txnid(), Transaction(request.abort().txn()));
+        break;
   }
     reply.set_status(status);
     reply.SerializeToString(&str2);

@@ -261,6 +261,9 @@ main(int argc, char **argv)
     int commitCount = 0;
     double commitLatency = 0.0;
 
+    bool isReadOnly = false;
+    bool status;
+
     std::vector<std::string> readKeys;
     std::vector<std::string> readValues;
     readKeys.reserve(tLen);
@@ -292,6 +295,9 @@ main(int argc, char **argv)
               putLatency += ((t4.tv_sec - t3.tv_sec)*1000000 + (t4.tv_usec - t3.tv_usec));
             }
           } else {
+            isReadOnly = true;
+            // todo: find the reason why this is not working when runtime>1s
+            // I guess it's related to timeout issue.
             readKeys.clear();
             for (int j = 0; j < tLen; j++) {
               readKeys.push_back(keys[rand_key()]);
@@ -328,7 +334,12 @@ main(int argc, char **argv)
         
           
         gettimeofday(&t3, NULL);
-        bool status = client->Commit();
+        if (isReadOnly) {
+          status = client->ReadOnlyCommit();
+          isReadOnly = false; // Reset for next transaction
+        } else {
+          status = client->Commit();
+        }
         gettimeofday(&t2, NULL);
 
         commitCount++;

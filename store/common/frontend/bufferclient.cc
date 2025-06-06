@@ -148,6 +148,18 @@ BufferClient::Commit(uint64_t timestamp, Promise *promise)
     txnclient->Commit(tid, txn, timestamp, promise);
 }
 
+void
+BufferClient::ReadOnlyPrepare(const Timestamp &timestamp, Promise *promise)
+{
+    txnclient->ReadOnlyPrepare(tid, txn, timestamp, promise);
+}
+
+void
+BufferClient::ReadOnlyCommit(uint64_t timestamp, Promise *promise)
+{
+    txnclient->ReadOnlyCommit(tid, txn, timestamp, promise);
+}
+
 /* Aborts the ongoing transaction. */
 void
 BufferClient::Abort(Promise *promise)

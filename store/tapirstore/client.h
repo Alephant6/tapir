@@ -63,6 +63,7 @@ public:
     std::string Get(const std::string &key);
     int Put(const std::string &key, const std::string &value);
     bool Commit();
+    bool ReadOnlyCommit(){return false;};
     void Abort();
     std::vector<int> Stats();
 

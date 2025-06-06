@@ -61,6 +61,7 @@ public:
     int BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues);
     int Put(const string &key, const string &value);
     bool Commit();
+    bool ReadOnlyCommit();
     void Abort();
     std::vector<int> Stats();
 
@@ -73,6 +74,7 @@ private:
 
     // local Prepare function
     int Prepare(Timestamp &timestamp);
+    int ReadOnlyPrepare(Timestamp &timestamp);
 
     // Unique ID for this client.
     uint64_t client_id;

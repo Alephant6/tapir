@@ -301,6 +301,59 @@ ShardClient::Commit(uint64_t id, const Transaction &txn,
     });
 }
 
+void
+ShardClient::ReadOnlyPrepare(uint64_t id, const Transaction &txn,
+                    const Timestamp &timestamp, Promise *promise)
+{
+    Debug("[shard %i] Sending ReadOnlyPREPARE: %lu", shard, id);
+
+    // create prepare request
+    string request_str;
+    Request request;
+    request.set_op(Request::PREPARE);
+    request.set_txnid(id);
+    txn.serialize(request.mutable_prepare()->mutable_txn());
+    request.SerializeToString(&request_str);
+
+    transport->Timer(0, [=]() {
+	    waiting = promise;
+            client->InvokeUnlogged(replica,
+                          request_str,
+                           bind(&ShardClient::PrepareCallback,
+                                this,
+                                placeholders::_1,
+                                placeholders::_2));
+        });
+}
+
+void
+ShardClient::ReadOnlyCommit(uint64_t id, const Transaction &txn,
+                   uint64_t timestamp, Promise *promise)
+{
+
+    Debug("[shard %i] Sending ReadOnlyCOMMIT: %lu", shard, id);
+
+    // create commit request
+    string request_str;
+    Request request;
+    request.set_op(Request::COMMIT);
+    request.set_txnid(id);
+    request.mutable_commit()->set_timestamp(timestamp);
+    request.SerializeToString(&request_str);
+
+    blockingBegin = new Promise(COMMIT_TIMEOUT);
+    transport->Timer(0, [=]() {
+        waiting = promise;
+
+        client->InvokeUnlogged(replica,
+            request_str,
+            bind(&ShardClient::CommitCallback,
+                this,
+                placeholders::_1,
+                placeholders::_2));
+    });
+}
+
 /* Aborts the ongoing transaction. */
 void
 ShardClient::Abort(uint64_t id, const Transaction &txn, Promise *promise)

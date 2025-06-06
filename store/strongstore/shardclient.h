@@ -92,6 +92,16 @@ public:
                 const Transaction &txn,
                 uint64_t timestamp,
                 Promise *promise = NULL);
+
+    void ReadOnlyPrepare(uint64_t id,
+                         const Transaction &txn,
+                         const Timestamp &timestamp = Timestamp(),
+                         Promise *promise = NULL);
+    void ReadOnlyCommit(uint64_t id,
+                        const Transaction &txn = Transaction(), 
+                        uint64_t timestamp = 0,
+                        Promise *promise = NULL);
+                        
     void Abort(uint64_t id, 
                const Transaction &txn,
                Promise *promise = NULL);

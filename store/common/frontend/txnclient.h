@@ -100,6 +100,18 @@ public:
                         const Transaction &txn = Transaction(), 
                         uint64_t timestamp = 0,
                         Promise *promise = NULL) = 0;
+
+    // Prepare the transaction.
+    virtual void ReadOnlyPrepare(uint64_t id,
+                         const Transaction &txn,
+                         const Timestamp &timestamp = Timestamp(),
+                         Promise *promise = NULL) = 0;
+
+    // Commit all Get(s) and Put(s) since Begin().
+    virtual void ReadOnlyCommit(uint64_t id,
+                        const Transaction &txn = Transaction(), 
+                        uint64_t timestamp = 0,
+                        Promise *promise = NULL) = 0;
     
     // Abort all Get(s) and Put(s) since Begin().
     virtual void Abort(uint64_t id, 

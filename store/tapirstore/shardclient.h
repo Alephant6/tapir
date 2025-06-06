@@ -90,6 +90,15 @@ public:
                const Transaction &txn,
                Promise *promise = NULL);
 
+    void ReadOnlyPrepare(uint64_t id,
+                         const Transaction &txn,
+                         const Timestamp &timestamp = Timestamp(),
+                         Promise *promise = NULL) {return;};
+    void ReadOnlyCommit(uint64_t id,
+                        const Transaction &txn = Transaction(), 
+                        uint64_t timestamp = 0,
+                        Promise *promise = NULL) {return;};
+
 private:
     uint64_t client_id; // Unique ID for this client.
     Transport *transport; // Transport layer.

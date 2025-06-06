@@ -59,6 +59,9 @@ public:
 
     // Commit the ongoing transaction.
     void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
+    
+    void ReadOnlyPrepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
+    void ReadOnlyCommit(uint64_t timestamp = 0, Promise *promise = NULL);
 
     // Abort the running transaction.
     void Abort(Promise *promise = NULL);
