@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for host in node1 node2 node3 node4
+for host in node1 node2 node3
 do
   echo "Deleting /local/tapir on $host..."
   ssh "$host" "sudo rm -rf /local/tapir"
