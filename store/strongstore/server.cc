@@ -66,7 +66,7 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
 
     Request request;
     Reply reply;
-    int status;
+    int status=0;
     Timestamp proposed;
     
     request.ParseFromString(str1);
@@ -122,8 +122,16 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
         }
         break;
     case strongstore::proto::Request::COMMIT:
-        replicate = true;
-        str2 = str1;
+        if (Transaction(request.prepare().txn()).IsReadOnly()) {
+          Debug("Received Read-Only COMMIT: %lu", request.txnid());
+          store->Commit(request.txnid(), request.commit().timestamp());
+          replicate = false;
+          reply.set_status(status);
+          reply.SerializeToString(&str2);
+        } else {
+          str2 = str1;
+          replicate = true;
+        }
         break;
     case strongstore::proto::Request::ABORT:
         replicate = true;
