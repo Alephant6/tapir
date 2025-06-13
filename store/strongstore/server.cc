@@ -103,9 +103,6 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
         if (status == 0) {
             replicate = true;
             // get a prepare timestamp and send along to replicas
-            if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
-                request.mutable_prepare()->set_timestamp(timeServer.GetTime());
-            }
             request.SerializeToString(&str2);
         } else {
             // if abort, don't replicate
@@ -249,9 +246,6 @@ Server::UnloggedUpcall(const string &str1, string &str2)
           request.SerializeToString(&str2);
           //TODO: BlockCondition
         } else if (status == 0) {
-            if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
-                request.mutable_prepare()->set_timestamp(timeServer.GetTime());
-            }
             request.SerializeToString(&str2);
         } else {
             reply.set_status(status);
@@ -261,7 +255,9 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     case strongstore::proto::Request::COMMIT:
         if (Transaction(request.prepare().txn()).IsReadOnly()) {
           Debug("Received Read-Only COMMIT: %lu", request.txnid());
-          store->Commit(request.txnid(), request.commit().timestamp());
+          // store->Commit(request.txnid(), request.commit().timestamp());
+          // remove the record and don't leave any metadata on the replica
+          store->RemovePrepared(request.txnid());
           reply.set_status(status);
           reply.SerializeToString(&str2);
         }
