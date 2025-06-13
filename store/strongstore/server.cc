@@ -103,9 +103,6 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
         if (status == 0) {
             replicate = true;
             // get a prepare timestamp and send along to replicas
-            if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
-                request.mutable_prepare()->set_timestamp(timeServer.GetTime());
-            }
             request.SerializeToString(&str2);
         } else {
             // if abort, don't replicate

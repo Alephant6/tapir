@@ -82,44 +82,22 @@ void
 BufferClient::BatchGets(const std::vector<std::string> &keys, Promise *promise)
 {
     std::vector<std::string> results(keys.size());
-    std::vector<std::string> serverKeys;
-    std::vector<size_t> serverIdxs;
+    // It is impossible to contain write operations.
+    // Since in this mode, it only has read-only and write-only transaction.
 
-    for (size_t i = 0; i < keys.size(); i++) {
-        const auto &k = keys[i];
-        auto wIt = txn.getWriteSet().find(k);
-        if (wIt != txn.getWriteSet().end()) {
-            results[i] = wIt->second;
-            continue;
+    Promise tempPromise(GET_TIMEOUT);
+    Promise *pp = (promise != nullptr) ? promise : &tempPromise;
+
+    txnclient->BatchGets(tid, keys, pp);
+    if (pp->GetReply() == REPLY_OK) {
+        auto vs = pp->GetValues();
+        for (size_t i = 0; i < vs.size(); i++) {
+            results[i] = vs[i];
         }
-        auto rIt = txn.getReadSet().find(k);
-        if (rIt != txn.getReadSet().end()) {
-            Promise tempPromise(GET_TIMEOUT);
-            Promise *pp = (promise != nullptr) ? promise : &tempPromise;
-            txnclient->Get(tid, k, rIt->second, pp);
-            if (pp->GetReply() == REPLY_OK) {
-                results[i] = pp->GetValue();
-            }
-        } else {
-            serverKeys.push_back(k);
-            serverIdxs.push_back(i);
-        }
+        Debug("Adding [keys with ts %lu", pp->GetTimestamp().getTimestamp());
+        txn.addReadKeysSet(keys, pp->GetTimestamp());
     }
-
-    if (!serverKeys.empty()) {
-        Promise tempPromise(GET_TIMEOUT);
-        Promise *pp = (promise != nullptr) ? promise : &tempPromise;
-
-        txnclient->BatchGets(tid, serverKeys, pp);
-        if (pp->GetReply() == REPLY_OK) {
-            auto vs = pp->GetValues();
-            for (size_t i = 0; i < vs.size(); i++) {
-                results[serverIdxs[i]] = vs[i];
-
-            }
-        }
-    }
-
+    
     if (promise) {
         promise->Reply(REPLY_OK, results);
     }
