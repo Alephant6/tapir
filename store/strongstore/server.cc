@@ -123,6 +123,7 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
         str2 = str1;
         break;
     case strongstore::proto::Request::ONE_SHOT_ROTX:{
+        Debug("Leader Received ONE_SHOT_ROTX request: %s", str1.c_str());
         // 1) Gather keys and timestamp
         const auto &ro = request.one_shot_rotx();
         std::vector<std::string> keys;
@@ -154,10 +155,11 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
                 status = prepRC;
             } else {
                 // 4) Commit
-                store->RemovePrepared(request.txnid());
+                // store->RemovePrepared(request.txnid());
             }
         }
         replicate = true;
+        request.SerializeToString(&str2);
         break;
       }
     default:
@@ -201,6 +203,7 @@ Server::ReplicaUpcall(opnum_t opnum,
         store->Abort(request.txnid(), Transaction(request.abort().txn()));
         break;
     case strongstore::proto::Request::ONE_SHOT_ROTX: {
+        Debug("Replica Received ONE_SHOT_ROTX request: %s", str1.c_str());
         // 1) Gather keys and timestamp
         const auto &ro = request.one_shot_rotx();
         Timestamp ts(ro.timestamp());
@@ -211,7 +214,7 @@ Server::ReplicaUpcall(opnum_t opnum,
         if (prepRC != 0) {
             status = prepRC;
         } else {
-            store->RemovePrepared(request.txnid());
+            store->Commit(request.txnid(), ts.getTimestamp());
         }
         break;
       }
