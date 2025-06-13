@@ -242,21 +242,29 @@ Server::UnloggedUpcall(const string &str1, string &str2)
                                 Timestamp(request.prepare().timestamp()),
                                 proposed);
 
-        // if prepared, then replicate result
-        if (status == 0) {
-            // get a prepare timestamp and send along to replicas
+        // if the transaction is read-only, then replicate=false, and reply.set_status(status);
+        if (Transaction(request.prepare().txn()).IsReadOnly()) {
+          Debug("Received Read-Only Prepare: %lu", request.txnid());
+          reply.set_status(status);
+          request.SerializeToString(&str2);
+          //TODO: BlockCondition
+        } else if (status == 0) {
             if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
                 request.mutable_prepare()->set_timestamp(timeServer.GetTime());
             }
             request.SerializeToString(&str2);
         } else {
-            // if abort, don't replicate
             reply.set_status(status);
             reply.SerializeToString(&str2);
         }
         break;
     case strongstore::proto::Request::COMMIT:
-        str2 = str1;
+        if (Transaction(request.prepare().txn()).IsReadOnly()) {
+          Debug("Received Read-Only COMMIT: %lu", request.txnid());
+          store->Commit(request.txnid(), request.commit().timestamp());
+          reply.set_status(status);
+          reply.SerializeToString(&str2);
+        }
         break;
     case strongstore::proto::Request::ABORT:
         store->Abort(request.txnid(), Transaction(request.abort().txn()));
