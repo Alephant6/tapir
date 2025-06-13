@@ -39,7 +39,7 @@ nclient=1    # number of clients to run (per machine)
 nkeys=100000 # number of keys to use
 rtime=1     # duration to run
 
-general_txn=0 # flag for generating general transactions (0: false, 1: true)
+general_txn=0 # flag for generating general transactions (0: false, 1: true, -1: one shot read only transaction)
 tlen=10       # transaction length
 wper=0       # writes percentage
 err=0        # error

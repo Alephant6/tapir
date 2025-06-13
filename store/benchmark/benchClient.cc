@@ -20,6 +20,9 @@ int rand_key();
 bool ready = false;
 double alpha = -1;
 double *zipf;
+// combine get and prepare, skip commit
+// for read-only transactions
+bool isOneShotReadOnly = true;
 
 vector<string> keys;
 int nKeys = 100;
@@ -201,15 +204,36 @@ main(int argc, char **argv)
           // if it is false, then it will generate read-only and write-only 
           // transactions according to the percentage of writes
           char *strtolPtr;
-          int generalTxn = strtol(optarg, &strtolPtr, 10);
-          if ((*optarg == '\0') || (*strtolPtr != '\0') || (generalTxn != 0 && generalTxn != 1)) {
-              fprintf(stderr, "option -g requires a boolean value (0 or 1)\n");
+          int val = strtol(optarg, &strtolPtr, 10);
+          if ((*optarg == '\0') || (*strtolPtr != '\0')) {
+              fprintf(stderr, "option -g requires an integer (0, 1, or -1)\n");
               exit(0);
           }
-          // Store the value in a boolean variable
-          generateGeneralTransactions = (generalTxn == 1);
-          break;
 
+          switch (val) {
+              case 0:
+                  // Generate read-only and write-only transactions according to percentage
+                  generateGeneralTransactions = false;
+                  isOneShotReadOnly = false;
+                  break;
+
+              case 1:
+                  // Generate general read-write transactions
+                  generateGeneralTransactions = true;
+                  isOneShotReadOnly = false;
+                  break;
+
+              case -1:
+                  // One-shot read-only transactions (skip commit)
+                  generateGeneralTransactions = false;
+                  isOneShotReadOnly = true;
+                  break;
+
+              default:
+                  fprintf(stderr, "option -g requires value 0, 1, or -1\n");
+                  exit(0);
+          }
+          break;
         }
 
         default:
@@ -262,9 +286,6 @@ main(int argc, char **argv)
     double commitLatency = 0.0;
 
     bool isReadOnlyUnloggedInvoke = false;
-    // combine get and prepare, skip commit
-    // for read-only transactions
-    bool isOneShotReadOnly = true;
     bool status;
 
     std::vector<std::string> readKeys;
