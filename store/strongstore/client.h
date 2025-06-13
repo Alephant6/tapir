@@ -75,6 +75,7 @@ private:
     // local Prepare function
     int Prepare(Timestamp &timestamp);
     int ReadOnlyPrepare(Timestamp &timestamp);
+    int OneShotReadOnly(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues);
 
     // Unique ID for this client.
     uint64_t client_id;

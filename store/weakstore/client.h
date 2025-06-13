@@ -58,6 +58,9 @@ public:
     void Begin() {};
     int Get(const std::string &key, std::string &value);
     int BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues);
+    int OneShotReadOnly(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues) {
+      return 0;
+    }
     int Put(const std::string &key, const std::string &value);
     bool Commit() { return true; };
     bool ReadOnlyCommit(){return false;};

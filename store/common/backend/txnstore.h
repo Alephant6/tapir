@@ -63,6 +63,8 @@ public:
     virtual int Prepare(uint64_t id, const Transaction &txn,
         const Timestamp &timestamp, Timestamp &proposed);
 
+    virtual void RemovePrepared(uint64_t id);
+
     // commit the transaction
     virtual void Commit(uint64_t id, uint64_t timestamp = 0);
 

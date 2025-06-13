@@ -269,6 +269,43 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     case strongstore::proto::Request::ABORT:
         store->Abort(request.txnid(), Transaction(request.abort().txn()));
         break;
+    case strongstore::proto::Request::ONE_SHOT_ROTX:
+        // 1) Gather keys and timestamp
+        const auto &ro = request.one_shot_rotx();
+        std::vector<std::string> keys;
+        for (int i = 0; i < ro.keys_size(); i++) {
+            keys.push_back(ro.keys(i));
+        }
+        Timestamp ts(ro.timestamp());
+
+        // 2) Batch read
+        auto *roVals = reply.mutable_one_shot_rotx_values();
+        status = 0;
+        for (auto &k : keys) {
+            std::pair<Timestamp, std::string> val;
+            int rc = store->Get(request.txnid(), k, ts, val);
+            if (rc != 0) {
+                status = rc;
+                break;
+            }
+            roVals->add_values(val.second);
+        }
+
+        // 3) Prepare (OCC check)
+        if (status == 0) {
+            // Construct a Transaction from the request
+            Transaction txn(ro.txn());
+            Timestamp proposed;
+            int prepRC = store->Prepare(request.txnid(), txn, ts, proposed);
+            if (prepRC != 0) {
+                status = prepRC;
+            } else {
+                // 4) Commit
+                store->RemovePrepared(request.txnid());
+            }
+        }
+        
+        break;
   }
     reply.set_status(status);
     reply.SerializeToString(&str2);

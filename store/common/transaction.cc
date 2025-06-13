@@ -48,6 +48,15 @@ Transaction::addReadSet(const string &key,
 }
 
 void
+Transaction::addReadKeysSet(const std::vector<std::string> &keys,
+                        const Timestamp &readTime)
+{
+    for (const auto &key : keys) {
+        readSet[key] = readTime;
+    }
+}
+
+void
 Transaction::addWriteSet(const string &key,
                          const string &value)
 {

@@ -18,6 +18,16 @@ message BatchValuesMessage {
     repeated string values = 1;
 }
 
+message OneShotReadOnlyMessage {
+    repeated string keys = 1;
+    required TimestampMessage timestamp = 2;
+    required TransactionMessage txn = 3;
+}
+
+message OneShotReadOnlyValuesMessage {
+    repeated string values = 1;
+}
+
 message PrepareMessage {
     required TransactionMessage txn = 1;
     optional uint64 timestamp = 2;
@@ -35,17 +45,19 @@ message Request {
      enum Operation {
           GET = 1;
           BATCH_GETS = 2;
-          PREPARE = 3;
-          COMMIT = 4;
-          ABORT = 5;
+          ONE_SHOT_ROTX =3;
+          PREPARE = 4;
+          COMMIT = 5;
+          ABORT = 6;
      }	
      required Operation op = 1;
      required uint64 txnid = 2;
      optional GetMessage get = 3;
      optional BatchGetsMessage batch_gets = 4;
-     optional PrepareMessage prepare = 5;
-     optional CommitMessage commit = 6;
-     optional AbortMessage abort = 7;
+     optional OneShotReadOnlyMessage one_shot_rotx = 5;
+     optional PrepareMessage prepare = 6;
+     optional CommitMessage commit = 7;
+     optional AbortMessage abort = 8;
 }
 
 message Reply {
@@ -57,4 +69,5 @@ message Reply {
      optional string value = 2;
      optional uint64 timestamp = 3;
      optional BatchValuesMessage batch_values = 4;
+     optional OneShotReadOnlyValuesMessage one_shot_rotx_values = 5;
 }

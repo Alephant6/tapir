@@ -59,6 +59,9 @@ public:
     void Begin();
     int Get(const std::string &key, std::string &value);
     int BatchGets(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues);
+    int OneShotReadOnly(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues) {
+      return 0;
+    }
     // Interface added for Java bindings
     std::string Get(const std::string &key);
     int Put(const std::string &key, const std::string &value);

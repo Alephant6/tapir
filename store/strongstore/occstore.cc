@@ -201,11 +201,20 @@ OCCStore::Prepare(uint64_t id, const Transaction &txn, const Timestamp &timestam
     }
 
     // Otherwise, prepare this transaction for commit
-    Warning("[%lu] is Prepared by make_pair!", id);
+    // Warning("[%lu] is Prepared by make_pair!", id);
     prepared[id] = make_pair(timestamp, txn);
     Debug("[%lu] PREPARED TO COMMIT", id);
 
     return REPLY_OK;
+}
+
+void 
+OCCStore::RemovePrepared(uint64_t id)
+{
+    Debug("[%lu] RemovePrepared", id);
+
+    // remove from prepared set
+    prepared.erase(id);
 }
 
 void

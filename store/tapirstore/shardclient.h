@@ -74,6 +74,11 @@ public:
             const std::vector<std::string> &keys,
             const Timestamp &timestamp, 
             Promise *promise = NULL);
+    void OneShotReadOnly(uint64_t id,
+            const std::vector<std::string> &keys,
+            const Transaction &txn,
+            const Timestamp &timestamp, 
+            Promise *promise = NULL) {return;};
     void Put(uint64_t id,
 	     const std::string &key,
 	     const std::string &value,

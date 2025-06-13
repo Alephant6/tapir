@@ -96,6 +96,7 @@ BufferClient::BatchGets(const std::vector<std::string> &keys, Promise *promise)
         if (rIt != txn.getReadSet().end()) {
             Promise tempPromise(GET_TIMEOUT);
             Promise *pp = (promise != nullptr) ? promise : &tempPromise;
+            // todo : use batchgets here, so it should do after for loop
             txnclient->Get(tid, k, rIt->second, pp);
             if (pp->GetReply() == REPLY_OK) {
                 results[i] = pp->GetValue();
@@ -116,10 +117,35 @@ BufferClient::BatchGets(const std::vector<std::string> &keys, Promise *promise)
             for (size_t i = 0; i < vs.size(); i++) {
                 results[serverIdxs[i]] = vs[i];
 
+                // todo : update read set
             }
         }
     }
 
+    if (promise) {
+        promise->Reply(REPLY_OK, results);
+    }
+}
+
+void
+BufferClient::OneShotReadOnly(const std::vector<std::string> &keys, const Timestamp &timestamp, Promise *promise)
+{
+    std::vector<std::string> results(keys.size());
+    // It is impossible to contain write operations
+
+    txn.addReadKeysSet(keys, timestamp);
+
+    Promise tempPromise(GET_TIMEOUT);
+    Promise *pp = (promise != nullptr) ? promise : &tempPromise;
+
+    txnclient->OneShotReadOnly(tid, keys, txn, timestamp, pp);
+    if (pp->GetReply() == REPLY_OK) {
+        auto vs = pp->GetValues();
+        for (size_t i = 0; i < vs.size(); i++) {
+            results[i] = vs[i];
+        }
+    }
+    
     if (promise) {
         promise->Reply(REPLY_OK, results);
     }

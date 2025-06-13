@@ -262,6 +262,9 @@ main(int argc, char **argv)
     double commitLatency = 0.0;
 
     bool isReadOnlyUnloggedInvoke = false;
+    // combine get and prepare, skip commit
+    // for read-only transactions
+    bool isOneShotReadOnly = true;
     bool status;
 
     std::vector<std::string> readKeys;
@@ -301,7 +304,11 @@ main(int argc, char **argv)
               readKeys.push_back(keys[rand_key()]);
             }
             gettimeofday(&t3, NULL);
-            client->BatchGets(readKeys, readValues);
+            if (isOneShotReadOnly) {
+              client->OneShotReadOnly(readKeys, readValues);
+            } else {
+              client->BatchGets(readKeys, readValues);
+            }
             gettimeofday(&t4, NULL);
             
             getCount += tLen;
@@ -332,11 +339,16 @@ main(int argc, char **argv)
         
           
         gettimeofday(&t3, NULL);
-        if (isReadOnlyUnloggedInvoke) {
-          status = client->ReadOnlyCommit();
-          isReadOnlyUnloggedInvoke = false; // Reset for next transaction
+        if (!isOneShotReadOnly) {
+          if (isReadOnlyUnloggedInvoke) {
+            status = client->ReadOnlyCommit();
+            isReadOnlyUnloggedInvoke = false; // Reset for next transaction
+          } else {
+            status = client->Commit();
+          }
         } else {
-          status = client->Commit();
+          // For one-shot read-only transactions, we do not need to commit.
+          status = true;
         }
         gettimeofday(&t2, NULL);
 

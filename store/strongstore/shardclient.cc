@@ -175,6 +175,68 @@ ShardClient::BatchGetsCallback(const std::string &request_str, const std::string
     }
 }
 
+void
+ShardClient::OneShotReadOnly(uint64_t id, const std::vector<std::string> &keys, const Transaction &txn, const Timestamp &timestamp, Promise *promise) {
+    Debug("[shard %i] Sending OneShotReadOnly with timestamp and %lu keys", shard, keys.size());
+
+    string request_str;
+    Request request;
+    request.set_op(Request::ONE_SHOT_ROTX);
+    request.set_txnid(id);
+    timestamp.serialize(request.mutable_one_shot_rotx()->mutable_timestamp());
+    txn.serialize(request.mutable_one_shot_rotx()->mutable_txn());
+    
+    auto rotx = request.mutable_one_shot_rotx();
+    for (const auto &key : keys) {
+        rotx->add_keys(key);
+    }
+    timestamp.serialize(rotx->mutable_timestamp());
+    request.SerializeToString(&request_str);
+
+    int timeout = (promise != NULL) ? promise->GetTimeout() : 1000;
+
+    transport->Timer(0, [=]() {
+        waiting = promise;
+        client->InvokeUnlogged(replica,
+                              request_str,
+                              bind(&ShardClient::OneShotReadOnlyCallback,
+                                   this,
+                                   placeholders::_1,
+                                   placeholders::_2),
+                              bind(&ShardClient::GetTimeout,
+                                   this),
+                              timeout); 
+    });
+    
+
+}
+
+void 
+ShardClient::OneShotReadOnlyCallback(const std::string &request_str, const std::string &reply_str) {
+    Reply reply;
+    reply.ParseFromString(reply_str);
+
+    Debug("[shard %i] Received OneShotReadOnly callback [%d]", shard, reply.status());
+    if (waiting != NULL) {
+        Promise *w = waiting;
+        waiting = NULL;
+        
+        std::vector<std::string> values;
+        if (reply.has_one_shot_rotx_values()) {
+            const auto &one_shot_rotx_values = reply.one_shot_rotx_values();
+            for (int i = 0; i < one_shot_rotx_values.values_size(); i++) {
+                values.push_back(one_shot_rotx_values.values(i));
+            }
+        }
+        
+        if (reply.has_timestamp()) {
+            w->Reply(reply.status(), Timestamp(reply.timestamp()), values);
+        } else {
+            w->Reply(reply.status(), values);
+        }
+    }
+}
+
 /* Returns the value corresponding to the supplied key. */
 void
 ShardClient::Get(uint64_t id, const string &key, Promise *promise)
@@ -262,6 +324,8 @@ ShardClient::Prepare(uint64_t id, const Transaction &txn,
     request.set_op(Request::PREPARE);
     request.set_txnid(id);
     txn.serialize(request.mutable_prepare()->mutable_txn());
+    // todo: add this
+    // timestamp.serialize(request.mutable_prepare()->mutable_timestamp());
     request.SerializeToString(&request_str);
 
     transport->Timer(0, [=]() {
