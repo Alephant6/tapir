@@ -125,6 +125,29 @@ BufferClient::BatchGets(const std::vector<std::string> &keys, Promise *promise)
     }
 }
 
+void
+BufferClient::OneShotReadOnly(const std::vector<std::string> &keys, const Timestamp &timestamp, Promise *promise)
+{
+    std::vector<std::string> results(keys.size());
+    // It is impossible to contain write operations
+    txn.addReadKeysSet(keys, timestamp);
+
+    Promise tempPromise(GET_TIMEOUT);
+    Promise *pp = (promise != nullptr) ? promise : &tempPromise;
+
+    txnclient->OneShotReadOnly(tid, keys, txn, timestamp, pp);
+    if (pp->GetReply() == REPLY_OK) {
+        auto vs = pp->GetValues();
+        for (size_t i = 0; i < vs.size(); i++) {
+            results[i] = vs[i];
+        }
+    }
+    
+    if (promise) {
+        promise->Reply(REPLY_OK, results);
+    }
+}
+
 /* Set value for a key. (Always succeeds).
  * Returns 0 on success, else -1. */
 void

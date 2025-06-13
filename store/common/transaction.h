@@ -44,6 +44,7 @@ public:
     const std::unordered_map<std::string, std::string>& getWriteSet() const;
     
     void addReadSet(const std::string &key, const Timestamp &readTime);
+    void addReadKeysSet(const std::vector<std::string> &keys, const Timestamp &readTime);
     void addWriteSet(const std::string &key, const std::string &value);
     void serialize(TransactionMessage *msg) const;
 };

@@ -224,6 +224,15 @@ OCCStore::Commit(uint64_t id, uint64_t timestamp)
     prepared.erase(id);
 }
 
+void 
+OCCStore::RemovePrepared(uint64_t id)
+{
+    Debug("[%lu] RemovePrepared", id);
+
+    // remove from prepared set
+    prepared.erase(id);
+}
+
 void
 OCCStore::Commit(const Timestamp &timestamp, const Transaction &txn)
 {

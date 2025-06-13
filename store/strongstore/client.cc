@@ -186,6 +186,57 @@ Client::BatchGets(const std::vector<std::string> &readKeys, std::vector<std::str
     return overallStatus;
 }
 
+int
+Client::OneShotReadOnly(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues) {
+      // Group keys by shard
+    std::unordered_map<int, std::vector<size_t>> shardKeyMap;
+    for (size_t idx = 0; idx < readKeys.size(); idx++) {
+        int shardID = key_to_shard(readKeys[idx], nshards);
+        shardKeyMap[shardID].push_back(idx);
+    }
+
+    // Prepare space for results
+    readValues.resize(readKeys.size());
+    int overallStatus = REPLY_OK;
+
+    Timestamp timestamp(timeServer.GetTime(), client_id);
+
+    // For each shard in map
+    for (auto &kv : shardKeyMap) {
+        int shardID = kv.first;
+        auto &indices = kv.second;
+        // Mark shard as participant
+        if (participants.find(shardID) == participants.end()) {
+            participants.insert(shardID);
+        }
+
+        // Gather keys for this shard
+        std::vector<std::string> shardKeys;
+        shardKeys.reserve(indices.size());
+        for (size_t idx : indices) {
+            shardKeys.push_back(readKeys[idx]);
+        }
+
+        // Perform batched get
+        Promise promise(GET_TIMEOUT);
+        bclient[shardID]->OneShotReadOnly(shardKeys, timestamp, &promise);
+        std::vector<std::string> shardValues = promise.GetValues();
+
+        // Copy results back in order
+        for (size_t i = 0; i < indices.size(); i++) {
+            readValues[indices[i]] = shardValues[i];
+        }
+
+        // Check reply
+        int reply = promise.GetReply();
+        if (reply != REPLY_OK) {
+            overallStatus = reply;
+        }
+    }
+
+    return overallStatus;
+}
+
 /* Sets the value corresponding to the supplied key. */
 int
 Client::Put(const string &key, const string &value)
