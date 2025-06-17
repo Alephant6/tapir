@@ -286,21 +286,7 @@ Server::UnloggedUpcall(const string &str1, string &str2)
             }
             roVals->add_values(val.second);
         }
-
-        // 3) Prepare (OCC check)
-        if (status == 0) {
-            // Construct a Transaction from the request
-            Transaction txn(ro.txn());
-            Timestamp proposed;
-            int prepRC = store->Prepare(request.txnid(), txn, ts, proposed);
-            if (prepRC != 0) {
-                status = prepRC;
-            } else {
-                // 4) Commit
-                store->RemovePrepared(request.txnid());
-            }
-        }
-        
+        // Shengzhou: to add Block Condition
         break;
   }
     reply.set_status(status);
