@@ -142,19 +142,6 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
             roVals->add_values(val.second);
         }
 
-        // 3) Prepare (OCC check)
-        if (status == 0) {
-            // Construct a Transaction from the request
-            Transaction txn(ro.txn());
-            Timestamp proposed;
-            int prepRC = store->Prepare(request.txnid(), txn, ts, proposed);
-            if (prepRC != 0) {
-                status = prepRC;
-            } else {
-                // 4) Commit
-                // store->RemovePrepared(request.txnid());
-            }
-        }
         replicate = true;
         request.SerializeToString(&str2);
         break;
@@ -201,18 +188,12 @@ Server::ReplicaUpcall(opnum_t opnum,
         break;
     case strongstore::proto::Request::ONE_SHOT_ROTX: {
         Debug("Replica Received ONE_SHOT_ROTX request: %s", str1.c_str());
-        // 1) Gather keys and timestamp
         const auto &ro = request.one_shot_rotx();
         Timestamp ts(ro.timestamp());
         // Construct a Transaction from the request
         Transaction txn(ro.txn());
         Timestamp proposed;
-        int prepRC = store->Prepare(request.txnid(), txn, ts, proposed);
-        if (prepRC != 0) {
-            status = prepRC;
-        } else {
-            store->Commit(request.txnid(), ts.getTimestamp());
-        }
+        store->Commit(ts, txn);
         break;
       }
     default:

@@ -77,6 +77,9 @@ TxnStore::Prepare(uint64_t id, const Transaction &txn,
 
 void TxnStore::RemovePrepared(uint64_t id) {return;};
 
+void TxnStore::Commit(const Timestamp &timestamp,
+        const Transaction &txn) {return;};
+
 void
 TxnStore::Commit(uint64_t id, uint64_t timestamp)
 {

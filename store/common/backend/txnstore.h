@@ -68,6 +68,9 @@ public:
     // commit the transaction
     virtual void Commit(uint64_t id, uint64_t timestamp = 0);
 
+    virtual void Commit(const Timestamp &timestamp,
+        const Transaction &txn = Transaction());
+
     // abort a running transaction
     virtual void Abort(uint64_t id, const Transaction &txn = Transaction());
 

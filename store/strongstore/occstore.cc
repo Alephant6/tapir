@@ -237,6 +237,7 @@ void
 OCCStore::Commit(const Timestamp &timestamp, const Transaction &txn)
 {
     // updated timestamp of last committed read for the read set
+    Debug("COMMIT at %lu", timestamp.getTimestamp());
     for (auto &read : txn.getReadSet()) {
         store.commitGet(read.first, // key
                         read.second, // timestamp of read version

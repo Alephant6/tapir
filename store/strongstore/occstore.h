@@ -61,6 +61,8 @@ public:
     void Abort(uint64_t id, const Transaction &txn = Transaction());
     void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
 
+    void Commit(const Timestamp &timestamp, const Transaction &txn);
+    
 private:
      // Are we running in linearizable (vs serializable) mode?
     bool linearizable=true;
@@ -73,7 +75,6 @@ private:
     
     void GetPreparedWrites(std::unordered_map< std::string, std::set<Timestamp> > &writes);
     void GetPreparedReads(std::unordered_map< std::string, std::set<Timestamp> > &reads);
-    void Commit(const Timestamp &timestamp, const Transaction &txn);
 
     std::set<std::string> getPreparedWrites();
     std::set<std::string> getPreparedReadWrites();
