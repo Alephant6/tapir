@@ -37,9 +37,9 @@ mode="occ"            # Mode for storage system.
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nkeys=100000 # number of keys to use
-rtime=1     # duration to run
+rtime=30     # duration to run
 
-general_txn=0 # flag for generating general transactions (0: false, 1: true, -1: one shot read only transaction)
+general_txn=0 # flag for generating general transactions (0: false, 1: true)
 tlen=10       # transaction length
 wper=0       # writes percentage
 err=0        # error
@@ -99,7 +99,7 @@ for host in ${clients[@]}
 do
   ssh $host "$srcdir/store/tools/start_client.sh \"$srcdir/store/benchmark/$client \
   -c $srcdir/store/tools/shard -N $nshard -f $srcdir/store/tools/keys \
-  -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -s $skew -z $zalpha -g $general_txn\" \
+  -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -s $skew -z $zalpha -r 2 -g $general_txn\" \
   $count $nclient $logdir"
 
   let count=$count+$nclient

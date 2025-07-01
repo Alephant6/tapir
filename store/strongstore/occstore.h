@@ -55,25 +55,18 @@ public:
     // Overriding from TxnStore.
     int Get(uint64_t id, const std::string &key, std::pair<Timestamp, std::string> &value);
     int Get(uint64_t id, const std::string &key, const Timestamp &timestamp, std::pair<Timestamp, std::string> &value);
-    int Prepare(uint64_t id, const Transaction &txn, const Timestamp &timestamp, Timestamp &proposed);
-    void RemovePrepared(uint64_t id);
+    int Prepare(uint64_t id, const Transaction &txn);
     void Commit(uint64_t id, uint64_t timestamp);
     void Abort(uint64_t id, const Transaction &txn = Transaction());
     void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
+    void RemovePrepared(uint64_t id);
+
 
 private:
-     // Are we running in linearizable (vs serializable) mode?
-    bool linearizable=true;
-
-    // Data store
+     // Data store.
     VersionedKVStore store;
 
-    // TODO: comment this.
-    std::unordered_map<uint64_t, std::pair<Timestamp, Transaction>> prepared;
-    
-    void GetPreparedWrites(std::unordered_map< std::string, std::set<Timestamp> > &writes);
-    void GetPreparedReads(std::unordered_map< std::string, std::set<Timestamp> > &reads);
-    void Commit(const Timestamp &timestamp, const Transaction &txn);
+    std::map<uint64_t, Transaction> prepared;
 
     std::set<std::string> getPreparedWrites();
     std::set<std::string> getPreparedReadWrites();

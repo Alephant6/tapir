@@ -73,8 +73,8 @@ private:
     void tssCallback(const string &request, const string &reply);
 
     // local Prepare function
-    int Prepare(Timestamp &timestamp);
-    int ReadOnlyPrepare(Timestamp &timestamp);
+    int Prepare(uint64_t &ts);
+    int ReadOnlyPrepare(uint64_t &ts);
     int OneShotReadOnly(const std::vector<std::string> &readKeys, std::vector<std::string> &readValues);
 
     // Unique ID for this client.

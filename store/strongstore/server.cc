@@ -95,14 +95,15 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
     case strongstore::proto::Request::PREPARE:
         // Prepare is the only case that is conditionally run at the leader
         status = store->Prepare(request.txnid(),
-                                Transaction(request.prepare().txn()),
-                                Timestamp(request.prepare().timestamp()),
-                                proposed);
+                                Transaction(request.prepare().txn()));
 
         // if prepared, then replicate result
         if (status == 0) {
             replicate = true;
             // get a prepare timestamp and send along to replicas
+            if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
+                request.mutable_prepare()->set_timestamp(timeServer.GetTime());
+            }
             request.SerializeToString(&str2);
         } else {
             // if abort, don't replicate
@@ -148,10 +149,11 @@ Server::ReplicaUpcall(opnum_t opnum,
         return;
     case strongstore::proto::Request::PREPARE:
         // get a prepare timestamp and return to client
-        status = store->Prepare(request.txnid(),
-                                Transaction(request.prepare().txn()),
-                                Timestamp(request.prepare().timestamp()),
-                                proposed);
+        store->Prepare(request.txnid(),
+                       Transaction(request.prepare().txn()));
+        if (mode == MODE_SPAN_LOCK || mode == MODE_SPAN_OCC) {
+            reply.set_timestamp(request.prepare().timestamp());
+        }
         break;
     case strongstore::proto::Request::COMMIT:
         store->Commit(request.txnid(), request.commit().timestamp());
@@ -235,59 +237,22 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     case strongstore::proto::Request::PREPARE:
         // Prepare is the only case that is conditionally run at the leader
         status = store->Prepare(request.txnid(),
-                                Transaction(request.prepare().txn()),
-                                Timestamp(request.prepare().timestamp()),
-                                proposed);
+                                Transaction(request.prepare().txn()));
 
-        // if the transaction is read-only, then replicate=false, and reply.set_status(status);
         if (Transaction(request.prepare().txn()).IsReadOnly()) {
           Debug("Received Read-Only Prepare: %lu", request.txnid());
           reply.set_status(status);
           request.SerializeToString(&str2);
-          //TODO: BlockCondition
-        } else if (status == 0) {
-            request.SerializeToString(&str2);
-        } else {
-            reply.set_status(status);
-            reply.SerializeToString(&str2);
+          if (status == 1) {
+            Debug("Read-Only Abort: %lu", request.txnid());
+            store->Abort(request.txnid(), Transaction(request.abort().txn()));
+          } else if (status == 0) {
+            Debug("Read-Only Commit: %lu", request.txnid());
+            store->Commit(request.txnid(), request.commit().timestamp());
+          }
         }
         break;
-    case strongstore::proto::Request::COMMIT:
-        if (Transaction(request.prepare().txn()).IsReadOnly()) {
-          Debug("Received Read-Only COMMIT: %lu", request.txnid());
-          // store->Commit(request.txnid(), request.commit().timestamp());
-          // remove the record and don't leave any metadata on the replica
-          store->RemovePrepared(request.txnid());
-          reply.set_status(status);
-          reply.SerializeToString(&str2);
-        }
-        break;
-    case strongstore::proto::Request::ABORT:
-        store->Abort(request.txnid(), Transaction(request.abort().txn()));
-        break;
-    case strongstore::proto::Request::ONE_SHOT_ROTX:
-        // 1) Gather keys and timestamp
-        const auto &ro = request.one_shot_rotx();
-        std::vector<std::string> keys;
-        for (int i = 0; i < ro.keys_size(); i++) {
-            keys.push_back(ro.keys(i));
-        }
-        Timestamp ts(ro.timestamp());
-
-        // 2) Batch read
-        auto *roVals = reply.mutable_one_shot_rotx_values();
-        status = 0;
-        for (auto &k : keys) {
-            std::pair<Timestamp, std::string> val;
-            int rc = store->Get(request.txnid(), k, ts, val);
-            if (rc != 0) {
-                status = rc;
-                break;
-            }
-            roVals->add_values(val.second);
-        }
-        // Shengzhou: to add Block Condition
-        break;
+    
   }
     reply.set_status(status);
     reply.SerializeToString(&str2);

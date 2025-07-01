@@ -20,9 +20,6 @@ int rand_key();
 bool ready = false;
 double alpha = -1;
 double *zipf;
-// combine get and prepare, skip commit
-// for read-only transactions
-bool isOneShotReadOnly = true;
 
 vector<string> keys;
 int nKeys = 100;
@@ -214,23 +211,16 @@ main(int argc, char **argv)
               case 0:
                   // Generate read-only and write-only transactions according to percentage
                   generateGeneralTransactions = false;
-                  isOneShotReadOnly = false;
                   break;
 
               case 1:
                   // Generate general read-write transactions
                   generateGeneralTransactions = true;
-                  isOneShotReadOnly = false;
                   break;
 
-              case -1:
-                  // One-shot read-only transactions (skip commit)
-                  generateGeneralTransactions = false;
-                  isOneShotReadOnly = true;
-                  break;
 
               default:
-                  fprintf(stderr, "option -g requires value 0, 1, or -1\n");
+                  fprintf(stderr, "option -g requires value 0, 1\n");
                   exit(0);
           }
           break;
@@ -325,11 +315,7 @@ main(int argc, char **argv)
               readKeys.push_back(keys[rand_key()]);
             }
             gettimeofday(&t3, NULL);
-            if (isOneShotReadOnly) {
-              client->OneShotReadOnly(readKeys, readValues);
-            } else {
-              client->BatchGets(readKeys, readValues);
-            }
+            client->BatchGets(readKeys, readValues);
             gettimeofday(&t4, NULL);
             
             getCount += tLen;
@@ -360,16 +346,11 @@ main(int argc, char **argv)
         
           
         gettimeofday(&t3, NULL);
-        if (!isOneShotReadOnly) {
-          if (isReadOnlyUnloggedInvoke) {
-            status = client->ReadOnlyCommit();
-            isReadOnlyUnloggedInvoke = false; // Reset for next transaction
-          } else {
-            status = client->Commit();
-          }
+        if (isReadOnlyUnloggedInvoke) {
+          status = client->ReadOnlyCommit();
+          isReadOnlyUnloggedInvoke = false; // Reset for next transaction
         } else {
-          // For one-shot read-only transactions, we do not need to commit.
-          status = true;
+          status = client->Commit();
         }
         gettimeofday(&t2, NULL);
 
